@@ -12,6 +12,8 @@ WORKDIR /app
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 
+COPY alembic.ini entrypoint.sh ./
+COPY alembic ./alembic
 COPY app ./app
 
 RUN useradd --create-home appuser
@@ -20,4 +22,5 @@ USER appuser
 ENV PATH="/app/.venv/bin:$PATH"
 
 EXPOSE 8000
+ENTRYPOINT ["./entrypoint.sh"]
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
