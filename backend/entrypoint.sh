@@ -6,4 +6,5 @@ set -e
 alembic upgrade head
 python -m app.seed
 
+# exec makes the server PID 1 so it receives the container's stop signal directly.
 exec "$@"

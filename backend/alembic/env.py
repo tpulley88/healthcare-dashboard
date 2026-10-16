@@ -6,6 +6,7 @@ from alembic import context
 from app.config import settings
 from app.models import Base
 
+# Share the app's settings so migrations and the API always target the same database.
 config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
@@ -21,10 +22,12 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
+# NullPool: a one-off migration run doesn't need connection pooling.
 def run_migrations_online() -> None:
     engine = create_engine(database_url, poolclass=pool.NullPool)
     with engine.connect() as connection:
         context.configure(connection=connection, target_metadata=target_metadata)
+        # Postgres supports transactional DDL, so a failed migration rolls back completely.
         with context.begin_transaction():
             context.run_migrations()
 

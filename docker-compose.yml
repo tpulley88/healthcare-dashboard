@@ -1,3 +1,4 @@
+# `:?` makes a missing .env value an error instead of a silent empty string.
 services:
   db:
     image: postgres:16-alpine
@@ -5,6 +6,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env}
+    # Not published to the host; reachable only on the Compose network.
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -19,6 +21,7 @@ services:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:?set POSTGRES_USER in .env}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:?set POSTGRES_DB in .env}
     ports:
       - "8000:8000"
+    # Wait for Postgres to accept connections, not just for the container to start.
     depends_on:
       db:
         condition: service_healthy

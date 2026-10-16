@@ -15,14 +15,17 @@ from app import seed_data
 from app.db import SessionLocal
 from app.models import BloodType, Note, Patient, PatientStatus
 
+# Logs counts only, never patient data.
 logger = logging.getLogger(__name__)
 
+# Fixed seed and anchor date: every environment gets identical data.
 PATIENT_COUNT = 120
 RANDOM_SEED = 42
 ANCHOR_DATE = date(2026, 10, 1)
 TELEPHONE_NOTE = seed_data.GENERAL_NOTES[2]
 
 
+# SpO2 ranges differ by context so exacerbation and COPD notes stay clinically plausible.
 def _template_values(rng: random.Random) -> dict[str, object]:
     return {
         "sbp": rng.randint(112, 152),
@@ -46,8 +49,8 @@ def _template_values(rng: random.Random) -> dict[str, object]:
     }
 
 
+# None (not recorded), [] (none known), or a sample, so all three states appear in the data.
 def _pick_list(rng: random.Random, options: list[str], max_items: int) -> list[str] | None:
-    """Return None (not recorded), [] (none known), or a sample of options."""
     roll = rng.random()
     if roll < 0.12:
         return None
@@ -56,10 +59,10 @@ def _pick_list(rng: random.Random, options: list[str], max_items: int) -> list[s
     return rng.sample(options, rng.randint(1, max_items))
 
 
+# Builds 0-5 chronological notes and returns them with the most recent in-person visit date.
 def _build_notes(
     rng: random.Random, conditions: list[str] | None
 ) -> tuple[list[Note], date | None]:
-    """Build 0-5 chronological notes; return them with the most recent in-person visit date."""
     templates = list(seed_data.GENERAL_NOTES)
     for condition in conditions or []:
         templates.extend(seed_data.CONDITION_NOTES[condition])
@@ -89,6 +92,7 @@ def _build_patient(rng: random.Random, index: int) -> Patient:
     city, state, postal_code, area_code = rng.choice(seed_data.LOCATIONS)
     age_days = rng.randint(18 * 365, 92 * 365)
 
+    # ~10% not recorded; the rest follow approximate US frequencies.
     blood_type = None
     if rng.random() > 0.10:
         weights = seed_data.BLOOD_TYPE_WEIGHTS
@@ -118,13 +122,14 @@ def _build_patient(rng: random.Random, index: int) -> Patient:
     )
 
 
+# Seeds only an empty table, so deleting every patient and restarting re-seeds.
 def seed(db: Session) -> int:
-    """Insert synthetic patients if none exist. Returns the number inserted."""
     if db.scalar(select(Patient.id).limit(1)) is not None:
         return 0
 
     rng = random.Random(RANDOM_SEED)
     patients = [_build_patient(rng, i) for i in range(1, PATIENT_COUNT + 1)]
+    # Single transaction: all patients and notes are saved, or none are.
     db.add_all(patients)
     db.commit()
     return len(patients)

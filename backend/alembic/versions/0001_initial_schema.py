@@ -19,6 +19,7 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
+# Hand-edited from autogenerate output, which emitted each enum CHECK constraint twice.
 def upgrade() -> None:
     op.create_table(
         "patients",

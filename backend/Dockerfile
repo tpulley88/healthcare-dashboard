@@ -9,6 +9,7 @@ ENV UV_COMPILE_BYTECODE=1 \
 WORKDIR /app
 
 # Install dependencies first so this layer is cached until the lockfile changes.
+# --frozen fails the build if uv.lock is stale.
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 
@@ -22,5 +23,6 @@ USER appuser
 ENV PATH="/app/.venv/bin:$PATH"
 
 EXPOSE 8000
+# The entrypoint migrates and seeds, then execs CMD.
 ENTRYPOINT ["./entrypoint.sh"]
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
