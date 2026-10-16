@@ -16,12 +16,26 @@ services:
       retries: 15
 
   api:
-    build: ./backend
+    build:
+      context: ./backend
+      target: runtime
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:?set POSTGRES_USER in .env}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:?set POSTGRES_DB in .env}
     ports:
       - "8000:8000"
     # Wait for Postgres to accept connections, not just for the container to start.
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # Runs the API test suite against a separate *_test database: docker compose run --rm test
+  test:
+    profiles: [test]
+    build:
+      context: ./backend
+      target: test
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:?set POSTGRES_USER in .env}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:?set POSTGRES_DB in .env}_test
     depends_on:
       db:
         condition: service_healthy
