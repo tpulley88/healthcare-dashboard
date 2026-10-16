@@ -102,12 +102,15 @@ class Patient(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    # cascade applies only to ORM deletes; passive_deletes leaves removal to the database's
-    # ON DELETE CASCADE rather than loading every note first.
+    # Soft delete: DELETE /patients/{id} sets this, and every patient query must exclude it.
+    # Notes are left untouched; they're unreachable because the patient returns 404.
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    # Includes soft-deleted notes; read paths must query notes with a deleted_at filter.
+    # passive_deletes="all" stops the ORM from touching notes if a patient row is deleted.
     notes: Mapped[list["Note"]] = relationship(
         back_populates="patient",
-        cascade="all, delete-orphan",
-        passive_deletes=True,
+        passive_deletes="all",
         order_by="Note.taken_at",
     )
 
@@ -120,11 +123,13 @@ class Note(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         primary_key=True, server_default=text("gen_random_uuid()")
     )
-    # Enforced by Postgres for every delete path, not just the ORM.
-    patient_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("patients.id", ondelete="CASCADE"))
+    # RESTRICT backs up the no-delete trigger (migration 0002) for patients with notes.
+    patient_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("patients.id", ondelete="RESTRICT"))
     # Clinical time supplied by the client; created_at is when the server stored it.
     taken_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     content: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # Like "entered in error": hidden from the chart but retained.
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     patient: Mapped[Patient] = relationship(back_populates="notes")
