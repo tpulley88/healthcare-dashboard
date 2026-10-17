@@ -8,13 +8,14 @@ import enum
 from datetime import date
 from typing import Annotated
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, Header, Query, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
+from sqlalchemy.orm.exc import StaleDataError
 
 from app import clock
 from app.dependencies import DbSession, LivePatient
-from app.errors import field_error
+from app.errors import STALE_PATIENT_MESSAGE, field_error, stale_patient_error
 from app.models import Note, Patient, PatientStatus
 from app.queries import live_notes
 from app.schemas import PatientCreate, PatientPage, PatientRead, PatientUpdate
@@ -78,6 +79,10 @@ def _order_by(sort: SortField, order: SortOrder) -> list:
     return [*columns, Patient.id]
 
 
+def _etag(patient: Patient) -> str:
+    return f'"{patient.version}"'
+
+
 # On an update, either date may come from the stored record, so this check runs in the route.
 def _check_visit_after_birth(date_of_birth: date, last_visit_date: date | None) -> None:
     if last_visit_date is not None and last_visit_date < date_of_birth:
@@ -128,8 +133,13 @@ def list_patients(params: Annotated[PatientListParams, Query()], db: DbSession) 
 
 
 @router.get("/{patient_id}", response_model=PatientRead)
-def get_patient(patient: LivePatient) -> Patient:
-    """Get one patient. A deleted patient returns 404."""
+def get_patient(patient: LivePatient, response: Response) -> Patient:
+    """Get one patient. A deleted patient returns 404.
+
+    The `ETag` header identifies this version of the patient. Send it back as `If-Match`
+    when saving changes, so a save based on an outdated copy is rejected.
+    """
+    response.headers["ETag"] = _etag(patient)
     return patient
 
 
@@ -145,8 +155,18 @@ def create_patient(body: PatientCreate, db: DbSession) -> Patient:
     return patient
 
 
-@router.put("/{patient_id}", response_model=PatientRead)
-def update_patient(body: PatientUpdate, patient: LivePatient, db: DbSession) -> Patient:
+@router.put(
+    "/{patient_id}",
+    response_model=PatientRead,
+    responses={412: {"description": STALE_PATIENT_MESSAGE}},
+)
+def update_patient(
+    body: PatientUpdate,
+    patient: LivePatient,
+    db: DbSession,
+    response: Response,
+    if_match: Annotated[str | None, Header()] = None,
+) -> Patient:
     """Update a patient. Only the fields you send are changed.
 
     - A field you leave out keeps its current value.
@@ -154,9 +174,17 @@ def update_patient(body: PatientUpdate, patient: LivePatient, db: DbSession) -> 
     - A list you send, such as allergies, replaces the stored list.
     - An empty body changes nothing and returns the patient as stored.
 
+    To avoid overwriting someone else's edit, send the `ETag` from when you loaded the patient
+    as `If-Match`. If the patient has changed since, nothing is saved and the response is 412.
+    Without `If-Match` the save goes ahead, which keeps the API usable by simple clients.
+    Two saves that both pass the check at the same moment can't both succeed;
+    the later one also gets 412.
+
     The route uses PUT to match the specified API.
     PATCH is the more common method for partial updates.
     """
+    if if_match is not None and if_match != _etag(patient):
+        raise stale_patient_error()
     # exclude_unset keeps only the fields the client sent, so a sent null is kept
     # and an omitted field is skipped.
     changes = body.model_dump(exclude_unset=True)
@@ -168,8 +196,14 @@ def update_patient(body: PatientUpdate, patient: LivePatient, db: DbSession) -> 
         _check_birth_before_notes(db, patient, changes["date_of_birth"])
     for field, value in changes.items():
         setattr(patient, field, value)
-    db.commit()
+    try:
+        db.commit()
+    except StaleDataError:
+        # Another save committed after this request loaded the patient. Discard this one.
+        db.rollback()
+        raise stale_patient_error() from None
     db.refresh(patient)
+    response.headers["ETag"] = _etag(patient)
     return patient
 
 
@@ -179,6 +213,11 @@ def delete_patient(patient: LivePatient, db: DbSession) -> None:
 
     This is a soft delete. The patient and their notes stay in the database,
     but every endpoint then returns 404 for this patient, including a second delete.
+    If someone else saves the patient at the same moment, the delete is refused with 412.
     """
     patient.deleted_at = func.now()
-    db.commit()
+    try:
+        db.commit()
+    except StaleDataError:
+        db.rollback()
+        raise stale_patient_error() from None

@@ -1,7 +1,7 @@
 """Request and response shapes for the API, with their validation rules.
 
 Address and phone rules assume a US-based practice.
-For allergies and conditions, null means "not recorded" and an empty list means "none known".
+For allergies and conditions, null means "unknown" and an empty list means "none known".
 The two are never treated as the same thing.
 """
 
@@ -212,6 +212,8 @@ class PatientRead(BaseModel):
     last_visit_date: date | None
     created_at: datetime
     updated_at: datetime
+    # The same number as the ETag header, for clients that read it from the body.
+    version: int
 
     @computed_field
     @property

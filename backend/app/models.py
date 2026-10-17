@@ -14,6 +14,7 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     Index,
+    Integer,
     MetaData,
     String,
     Text,
@@ -92,7 +93,7 @@ class Patient(Base):
     state: Mapped[str | None] = mapped_column(String(2))
     postal_code: Mapped[str | None] = mapped_column(String(10))
 
-    # NULL means "not recorded" and an empty list means "none known".
+    # For allergies and conditions, NULL means "unknown" and an empty list means "none known".
     blood_type: Mapped[BloodType | None] = mapped_column(_string_enum(BloodType, "blood_type", 3))
     allergies: Mapped[list[str] | None] = mapped_column(ARRAY(Text))
     conditions: Mapped[list[str] | None] = mapped_column(ARRAY(Text))
@@ -113,6 +114,12 @@ class Patient(Base):
     # Set by DELETE /patients/{id}. Every patient query must leave these rows out.
     # The patient's notes aren't changed; they become unreachable because the patient returns 404.
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    # Goes up by one on every change, so an edit made from an older copy can be detected.
+    # SQLAlchemy adds "AND version = <loaded version>" to each UPDATE and raises StaleDataError
+    # when no row matches, which means someone else saved in between.
+    version: Mapped[int] = mapped_column(Integer, server_default=text("1"))
+    __mapper_args__ = {"version_id_col": version}
 
     # This includes deleted notes, so reads query notes directly with a deleted_at filter.
     # passive_deletes="all" stops SQLAlchemy from changing notes if someone deletes a patient row.

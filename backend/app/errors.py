@@ -1,3 +1,4 @@
+from fastapi import HTTPException, status
 from fastapi.exceptions import RequestValidationError
 
 
@@ -10,3 +11,13 @@ def field_error(field: str, message: str, value: object) -> RequestValidationErr
     """
     error = {"type": "value_error", "loc": ("body", field), "msg": message, "input": str(value)}
     return RequestValidationError([error])
+
+
+STALE_PATIENT_MESSAGE = (
+    "This patient was changed by someone else. Reload it and review the changes before saving."
+)
+
+
+def stale_patient_error() -> HTTPException:
+    """Build the 412 returned when a save is based on an outdated copy of the patient."""
+    return HTTPException(status.HTTP_412_PRECONDITION_FAILED, STALE_PATIENT_MESSAGE)

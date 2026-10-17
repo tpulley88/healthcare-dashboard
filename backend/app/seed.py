@@ -49,7 +49,7 @@ def _template_values(rng: random.Random) -> dict[str, object]:
     }
 
 
-# Returns None ("not recorded"), an empty list ("none known"), or a sample,
+# Returns None ("unknown"), an empty list ("none known"), or a sample,
 # so the data includes all three cases.
 def _pick_list(rng: random.Random, options: list[str], max_items: int) -> list[str] | None:
     roll = rng.random()

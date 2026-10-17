@@ -3,6 +3,7 @@ from datetime import date, datetime, timedelta
 
 import pytest
 from sqlalchemy import select, text
+from sqlalchemy import update as sql_update
 from sqlalchemy.exc import IntegrityError
 
 from app.models import Note, Patient
@@ -30,7 +31,7 @@ def test_create_normalizes_input(create_patient):
     assert "deleted_at" not in patient
 
 
-def test_create_keeps_not_recorded_distinct_from_none_known(create_patient):
+def test_create_keeps_unknown_distinct_from_none_known(create_patient):
     patient = create_patient(allergies=None, conditions=[])
     assert patient["allergies"] is None
     assert patient["conditions"] == []
@@ -177,7 +178,7 @@ def test_update_changes_only_supplied_fields(client, create_patient):
     assert response.status_code == 200
     updated = response.json()
     assert updated["phone"] == "(617) 555-0199"
-    unchanged = {k: v for k, v in created.items() if k not in {"phone", "updated_at"}}
+    unchanged = {k: v for k, v in created.items() if k not in {"phone", "updated_at", "version"}}
     assert {k: updated[k] for k in unchanged} == unchanged
 
 
@@ -227,6 +228,89 @@ def test_update_rejects_unknown_field(client, create_patient):
 
 def test_update_unknown_patient_is_404(client):
     assert update(client, MISSING_ID, {"phone": "6175550142"}).status_code == 404
+
+
+# --- Edit conflicts ---------------------------------------------------------------------------
+
+
+def put_if_match(client, patient_id, body, etag):
+    return client.put(f"/patients/{patient_id}", json=body, headers={"If-Match": etag})
+
+
+def load_then_bump_version(db, patient_id) -> Patient:
+    """Simulate another request saving the patient after this session loaded it.
+
+    The session's copy keeps the old version, so the route's save still expects it.
+    The session holds loaded objects weakly, so the caller must keep the returned
+    patient alive, or the route would load a fresh copy and see no conflict.
+    """
+    loaded = db.get(Patient, uuid.UUID(patient_id))
+    db.execute(
+        sql_update(Patient)
+        .where(Patient.id == loaded.id)
+        .values(version=Patient.version + 1)
+        .execution_options(synchronize_session=False)
+    )
+    return loaded
+
+
+def test_get_returns_version_as_etag(client, create_patient):
+    created = create_patient()
+    response = client.get(f"/patients/{created['id']}")
+    assert created["version"] == 1
+    assert response.headers["ETag"] == '"1"'
+
+
+def test_update_with_current_etag_saves_and_returns_new_etag(client, create_patient):
+    created = create_patient()
+    response = put_if_match(client, created["id"], {"phone": "6175550142"}, '"1"')
+    assert response.status_code == 200
+    assert response.json()["version"] == 2
+    assert response.headers["ETag"] == '"2"'
+
+
+def test_update_with_outdated_etag_is_412_and_saves_nothing(client, create_patient):
+    created = create_patient()
+    update(client, created["id"], {"phone": "6175550142"})  # someone else's save: version 2
+
+    response = put_if_match(client, created["id"], {"phone": "6175550199"}, '"1"')
+
+    assert response.status_code == 412
+    assert "changed by someone else" in response.json()["detail"]
+    current = client.get(f"/patients/{created['id']}").json()
+    assert (current["phone"], current["version"]) == ("(617) 555-0142", 2)
+
+
+def test_update_without_if_match_still_saves(client, create_patient):
+    created = create_patient()
+    assert update(client, created["id"], {"phone": "6175550142"}).status_code == 200
+
+
+def test_update_with_empty_body_keeps_version(client, create_patient):
+    created = create_patient()
+    response = put_if_match(client, created["id"], {}, '"1"')
+    assert response.json()["version"] == 1
+
+
+@pytest.mark.parametrize("etag", ['"1"', None])
+def test_update_is_412_when_another_save_lands_after_loading(client, db, create_patient, etag):
+    created = create_patient()
+    stale = load_then_bump_version(db, created["id"])
+
+    headers = {"If-Match": etag} if etag else {}
+    body = {"phone": "6175550142"}
+    response = client.put(f"/patients/{created['id']}", json=body, headers=headers)
+
+    assert response.status_code == 412
+    assert stale.phone is None  # reloaded after the route's rollback
+
+
+def test_delete_is_412_when_another_save_lands_after_loading(client, db, create_patient):
+    created = create_patient()
+    stale = load_then_bump_version(db, created["id"])
+
+    assert client.delete(f"/patients/{created['id']}").status_code == 412
+    assert stale.deleted_at is None
 
 
 # --- Delete (soft) ---------------------------------------------------------------------------

@@ -49,9 +49,9 @@ def test_headline_includes_identifiers_and_clinical_lists():
 @pytest.mark.parametrize(
     ("overrides", "expected"),
     [
-        ({"allergies": None}, "Allergies not recorded."),
+        ({"allergies": None}, "Allergies unknown."),
         ({"allergies": []}, "No known allergies."),
-        ({"conditions": None}, "Conditions not recorded."),
+        ({"conditions": None}, "Conditions unknown."),
         ({"conditions": []}, "No known chronic conditions."),
         ({"blood_type": None}, "Blood type not recorded."),
         ({"status": PatientStatus.INACTIVE}, "68-year-old patient, currently inactive."),

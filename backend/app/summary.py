@@ -29,10 +29,10 @@ def _plural(count: int, word: str) -> str:
     return f"{count} {word}" if count == 1 else f"{count} {word}s"
 
 
-# None means "not recorded" and an empty list means "none known", so each reads differently.
+# None means "unknown" and an empty list means "none known", so each reads differently.
 def _clinical_list(items: list[str] | None, label: str, none_known: str) -> str:
     if items is None:
-        return f"{label} not recorded."
+        return f"{label} unknown."
     if not items:
         return none_known
     return f"{label}: {', '.join(items)}."
