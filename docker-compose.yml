@@ -29,6 +29,14 @@ services:
       db:
         condition: service_healthy
 
+  # The web app. nginx serves the built frontend and forwards /api to the api service.
+  web:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+
   # Runs the API test suite against a separate *_test database: docker compose run --rm test
   test:
     profiles: [test]
