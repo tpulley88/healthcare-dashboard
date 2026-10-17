@@ -1,7 +1,7 @@
 """Seed the database with synthetic patients when it is empty.
 
-Run as `python -m app.seed`. Generation is deterministic (fixed random seed and anchor
-date), so every environment gets the same data.
+Run as `python -m app.seed`; the container entrypoint does this on every start.
+A fixed random seed and anchor date give every environment the same data.
 """
 
 import logging
@@ -18,14 +18,14 @@ from app.models import BloodType, Note, Patient, PatientStatus
 # Logs counts only, never patient data.
 logger = logging.getLogger(__name__)
 
-# Fixed seed and anchor date: every environment gets identical data.
+# A fixed seed and anchor date make every run produce identical data.
 PATIENT_COUNT = 120
 RANDOM_SEED = 42
 ANCHOR_DATE = date(2026, 10, 1)
 TELEPHONE_NOTE = seed_data.GENERAL_NOTES[2]
 
 
-# SpO2 ranges differ by context so exacerbation and COPD notes stay clinically plausible.
+# SpO2 ranges depend on the note, so COPD and exacerbation notes stay clinically plausible.
 def _template_values(rng: random.Random) -> dict[str, object]:
     return {
         "sbp": rng.randint(112, 152),
@@ -49,7 +49,8 @@ def _template_values(rng: random.Random) -> dict[str, object]:
     }
 
 
-# None (not recorded), [] (none known), or a sample, so all three states appear in the data.
+# Returns None ("not recorded"), an empty list ("none known"), or a sample,
+# so the data includes all three cases.
 def _pick_list(rng: random.Random, options: list[str], max_items: int) -> list[str] | None:
     roll = rng.random()
     if roll < 0.12:
@@ -59,7 +60,7 @@ def _pick_list(rng: random.Random, options: list[str], max_items: int) -> list[s
     return rng.sample(options, rng.randint(1, max_items))
 
 
-# Builds 0-5 chronological notes and returns them with the most recent in-person visit date.
+# Builds 0 to 5 notes in time order, plus the date of the most recent in-person visit.
 def _build_notes(
     rng: random.Random, conditions: list[str] | None
 ) -> tuple[list[Note], date | None]:
@@ -74,7 +75,7 @@ def _build_notes(
     last_visit: date | None = None
     for offset in days_ago:
         note_date = ANCHOR_DATE - timedelta(days=offset)
-        # 13:00-21:59 UTC is roughly 9 AM-6 PM US Eastern clinic hours.
+        # 13:00 to 21:59 UTC is roughly 9 AM to 6 PM in US Eastern clinic hours.
         taken_at = datetime.combine(
             note_date, time(rng.randint(13, 21), rng.choice([0, 15, 30, 45])), tzinfo=UTC
         )
@@ -92,7 +93,7 @@ def _build_patient(rng: random.Random, index: int) -> Patient:
     city, state, postal_code, area_code = rng.choice(seed_data.LOCATIONS)
     age_days = rng.randint(18 * 365, 92 * 365)
 
-    # ~10% not recorded; the rest follow approximate US frequencies.
+    # About 10% have no recorded blood type. The rest follow approximate US frequencies.
     blood_type = None
     if rng.random() > 0.10:
         weights = seed_data.BLOOD_TYPE_WEIGHTS
@@ -122,14 +123,17 @@ def _build_patient(rng: random.Random, index: int) -> Patient:
     )
 
 
-# Seeds only an empty table, so deleting every patient and restarting re-seeds.
 def seed(db: Session) -> int:
+    """Insert the synthetic patients if the patients table is empty, and return how many.
+
+    Deleted patients are still rows, so the seed never adds data on top of retained records.
+    Everything is saved in one transaction: either all patients and notes are saved, or none.
+    """
     if db.scalar(select(Patient.id).limit(1)) is not None:
         return 0
 
     rng = random.Random(RANDOM_SEED)
     patients = [_build_patient(rng, i) for i in range(1, PATIENT_COUNT + 1)]
-    # Single transaction: all patients and notes are saved, or none are.
     db.add_all(patients)
     db.commit()
     return len(patients)

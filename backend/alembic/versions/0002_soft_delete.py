@@ -29,8 +29,9 @@ def upgrade() -> None:
     op.drop_constraint(FK_NAME, "notes", type_="foreignkey")
     op.create_foreign_key(FK_NAME, "notes", "patients", ["patient_id"], ["id"], ondelete="RESTRICT")
 
-    # Reject physical deletes from any client, not just the API. Superusers can still bypass
-    # this (disabled triggers, TRUNCATE), so it guards against mistakes, not tampering.
+    # Reject physical deletes from every client, not only the API.
+    # A database superuser can still get around it (by disabling triggers or using TRUNCATE),
+    # so it protects against mistakes, not against deliberate tampering.
     op.execute("""
         CREATE FUNCTION prevent_hard_delete() RETURNS trigger LANGUAGE plpgsql AS $$
         BEGIN
@@ -46,7 +47,8 @@ def upgrade() -> None:
         )
 
 
-# Soft-delete markers are dropped, so deleted patients and notes reappear as live records.
+# Warning: this drops the deleted_at columns,
+# so deleted patients and notes reappear as live records.
 def downgrade() -> None:
     for table in TABLES:
         op.execute(f"DROP TRIGGER {table}_prevent_hard_delete ON {table}")

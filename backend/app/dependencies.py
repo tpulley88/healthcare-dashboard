@@ -1,3 +1,5 @@
+"""Dependencies shared by the API routes."""
+
 import uuid
 from typing import Annotated
 
@@ -11,9 +13,13 @@ from app.models import Patient
 DbSession = Annotated[Session, Depends(get_db)]
 
 
-# The one place patient-scoped routes load a patient, so none can forget the deleted check.
-# FastAPI caches get_db per request, so this shares the route's session.
 def get_live_patient(patient_id: uuid.UUID, db: DbSession) -> Patient:
+    """Load the patient named in the URL, or respond with 404.
+
+    Deleted patients get a 404 too.
+    Every route that works on one patient loads it here, so none can forget that check.
+    FastAPI creates one session per request, so this shares the route's session.
+    """
     query = select(Patient).where(Patient.id == patient_id, Patient.deleted_at.is_(None))
     patient = db.scalar(query)
     if patient is None:
