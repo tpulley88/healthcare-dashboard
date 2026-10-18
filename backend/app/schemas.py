@@ -263,8 +263,10 @@ class PatientSummary(BaseModel):
     """A readable summary of a patient's profile and recent notes.
 
     The profile fields are always present, even when the patient has no notes.
-    The narrative covers only the most recent notes. `notes_included` and `notes_total`
-    show how many it covers, because it isn't a complete clinical history.
+    The narrative covers only the most recent notes, so it isn't a complete clinical history.
+    It has one line per note, oldest first, separated by line breaks.
+    `notes_included`, `notes_total`, `notes_from`, and `notes_to` say what it covers;
+    show them alongside the narrative. The dates are calendar dates at the practice.
     `source` is "template" today. It leaves room for an optional LLM-generated narrative later.
     """
 
@@ -280,4 +282,6 @@ class PatientSummary(BaseModel):
     narrative: str
     notes_included: int
     notes_total: int
+    notes_from: date | None
+    notes_to: date | None
     source: Literal["template"] = "template"

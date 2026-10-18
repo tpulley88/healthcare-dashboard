@@ -66,7 +66,8 @@ def get_summary(patient: LivePatient, db: DbSession) -> PatientSummary:
     """Get a readable summary of a patient's profile and recent notes.
 
     Name, age, blood type, conditions, and allergies are always included.
-    The narrative covers only the 10 most recent notes and says how many earlier notes it left out.
+    The narrative covers only the 10 most recent notes. The response says how many notes it
+    includes out of the total, and the dates of the first and last, so clients can show that.
     Each note contributes only its first sentence or two,
     so details later in a note can be missing.
     It isn't a complete clinical history; the full notes are available from the notes endpoint.

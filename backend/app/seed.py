@@ -49,37 +49,48 @@ def _template_values(rng: random.Random) -> dict[str, object]:
     }
 
 
-# Returns None ("unknown"), an empty list ("none known"), or a sample,
-# so the data includes all three cases.
-def _pick_list(rng: random.Random, options: list[str], max_items: int) -> list[str] | None:
-    roll = rng.random()
-    if roll < 0.12:
-        return None
-    if roll < 0.40:
+# Rough, illustrative rates for synthetic data, not real prevalence figures.
+# Chronic conditions become more common with age, and so does having several.
+def _pick_conditions(rng: random.Random, age: int) -> list[str]:
+    if age < 40:
+        none_known, counts, weights = 0.50, [1, 2], [4, 1]
+    elif age < 65:
+        none_known, counts, weights = 0.25, [1, 2, 3], [5, 3, 2]
+    else:
+        none_known, counts, weights = 0.08, [1, 2, 3], [3, 4, 3]
+    if rng.random() < none_known:
         return []
-    return rng.sample(options, rng.randint(1, max_items))
+    count = rng.choices(counts, weights=weights)[0]
+    return rng.sample(list(seed_data.CONDITION_NOTES), count)
 
 
-# Builds 0 to 5 notes in time order, plus the date of the most recent in-person visit.
+# Most patients have no known allergies; about 30% have one, occasionally two.
+def _pick_allergies(rng: random.Random) -> list[str]:
+    if rng.random() >= 0.30:
+        return []
+    return rng.sample(seed_data.ALLERGIES, 1 if rng.random() < 0.8 else 2)
+
+
+# Builds up to `count` notes in time order, plus the date of the most recent in-person visit.
+# Each note uses a different template, so no patient has two notes with the same text.
 def _build_notes(
-    rng: random.Random, conditions: list[str] | None
+    rng: random.Random, conditions: list[str], count: int
 ) -> tuple[list[Note], date | None]:
     templates = list(seed_data.GENERAL_NOTES)
-    for condition in conditions or []:
+    for condition in conditions:
         templates.extend(seed_data.CONDITION_NOTES[condition])
 
-    count = rng.choices([0, 1, 2, 3, 4, 5], weights=[8, 15, 25, 25, 15, 12])[0]
-    days_ago = sorted(rng.sample(range(7, 730), count), reverse=True)
+    chosen = rng.sample(templates, min(count, len(templates)))
+    days_ago = sorted(rng.sample(range(7, 730), len(chosen)), reverse=True)
 
     notes: list[Note] = []
     last_visit: date | None = None
-    for offset in days_ago:
+    for offset, template in zip(days_ago, chosen, strict=True):
         note_date = ANCHOR_DATE - timedelta(days=offset)
         # 13:00 to 21:59 UTC is roughly 9 AM to 6 PM in US Eastern clinic hours.
         taken_at = datetime.combine(
             note_date, time(rng.randint(13, 21), rng.choice([0, 15, 30, 45])), tzinfo=UTC
         )
-        template = rng.choice(templates)
         notes.append(Note(taken_at=taken_at, content=template.format(**_template_values(rng))))
         # A phone call documents care but is not a visit.
         if template != TELEPHONE_NOTE:
@@ -99,8 +110,15 @@ def _build_patient(rng: random.Random, index: int) -> Patient:
         weights = seed_data.BLOOD_TYPE_WEIGHTS
         blood_type = BloodType(rng.choices(list(weights), weights=list(weights.values()))[0])
 
-    conditions = _pick_list(rng, list(seed_data.CONDITION_NOTES), max_items=3)
-    notes, last_visit = _build_notes(rng, conditions)
+    note_count = rng.choices([0, 1, 2, 3, 4, 5], weights=[8, 15, 25, 25, 15, 12])[0]
+    if note_count == 0:
+        # A new patient who hasn't been seen yet: intake isn't done, so both lists are unknown.
+        conditions, allergies = None, None
+        notes, last_visit = [], None
+    else:
+        conditions = _pick_conditions(rng, age_days // 365)
+        allergies = _pick_allergies(rng)
+        notes, last_visit = _build_notes(rng, conditions, note_count)
 
     return Patient(
         first_name=first,
@@ -115,7 +133,7 @@ def _build_patient(rng: random.Random, index: int) -> Patient:
         state=state,
         postal_code=postal_code,
         blood_type=blood_type,
-        allergies=_pick_list(rng, seed_data.ALLERGIES, max_items=2),
+        allergies=allergies,
         conditions=conditions,
         status=rng.choices(list(PatientStatus), weights=[82, 14, 4])[0],
         last_visit_date=last_visit,

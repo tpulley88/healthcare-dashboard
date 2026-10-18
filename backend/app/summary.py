@@ -79,7 +79,7 @@ def _excerpt(content: str) -> str:
 
 def _gap(days: int) -> str:
     if days == 0:
-        return "Later the same day"
+        return "later the same day"
     if days < 14:
         return f"{_plural(days, 'day')} later"
     if days < 60:
@@ -89,38 +89,30 @@ def _gap(days: int) -> str:
     return f"{days // 365} years later"
 
 
+# Each entry leads with its date, so the dates line up like a chart.
+# The time since the previous note shows gaps in care, such as "11 months later".
 def _timeline(dated_notes: list[tuple[date, Note]]) -> list[str]:
     entries = []
     previous: date | None = None
     for index, (day, note) in enumerate(dated_notes):
-        when = _format_date(day)
-        if previous is None:
-            lead = f"On {when}"
-        elif index == len(dated_notes) - 1:
-            lead = f"Most recently ({when})"
-        else:
-            lead = f"{_gap((day - previous).days)} ({when})"
+        details = []
+        if previous is not None:
+            details.append(_gap((day - previous).days))
+            if index == len(dated_notes) - 1:
+                details.append("most recent")
+        lead = _format_date(day) + (f" ({', '.join(details)})" if details else "")
         entries.append(f"{lead}: {_excerpt(note.content)}")
         previous = day
     return entries
 
 
-def _narrative(recent_notes: Sequence[Note], notes_total: int, tz: ZoneInfo) -> str:
-    if not recent_notes:
+# One line per note, so each visit is easy to pick out.
+# Coverage (how many notes, over which dates) is returned as separate fields rather than
+# repeated in the text, so clients can label it once in their own words.
+def _narrative(dated_notes: list[tuple[date, Note]]) -> str:
+    if not dated_notes:
         return "No clinical notes on file."
-    dated = [(note.taken_at.astimezone(tz).date(), note) for note in recent_notes]
-    first, last = _format_date(dated[0][0]), _format_date(dated[-1][0])
-    span = f"on {first}" if first == last else f"from {first} to {last}"
-    included = len(recent_notes)
-    if included == notes_total:
-        coverage = f"Recent-note summary of {_plural(included, 'note')} {span}."
-    else:
-        omitted = notes_total - included
-        coverage = (
-            f"Recent-note summary of the latest {included} of {notes_total} notes, {span}; "
-            f"{_plural(omitted, 'earlier note')} not included."
-        )
-    return " ".join([coverage, "Not a complete clinical history.", *_timeline(dated)])
+    return "\n".join(_timeline(dated_notes))
 
 
 def build_summary(
@@ -137,6 +129,7 @@ def build_summary(
     Both come from the same set of notes, so the number reported as left out is accurate.
     `today` and `tz` are passed in rather than read from the clock, which keeps tests predictable.
     """
+    dated = [(note.taken_at.astimezone(tz).date(), note) for note in recent_notes]
     return PatientSummary(
         patient_id=patient.id,
         name=f"{patient.first_name} {patient.last_name}",
@@ -147,7 +140,9 @@ def build_summary(
         conditions=patient.conditions,
         allergies=patient.allergies,
         headline=_headline(patient, today),
-        narrative=_narrative(recent_notes, notes_total, tz),
+        narrative=_narrative(dated),
         notes_included=len(recent_notes),
         notes_total=notes_total,
+        notes_from=dated[0][0] if dated else None,
+        notes_to=dated[-1][0] if dated else None,
     )

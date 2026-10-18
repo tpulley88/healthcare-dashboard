@@ -74,14 +74,12 @@ def test_no_notes():
     summary = summarize()
     assert summary.narrative == "No clinical notes on file."
     assert (summary.notes_included, summary.notes_total) == (0, 0)
+    assert (summary.notes_from, summary.notes_to) == (None, None)
 
 
 def test_single_note():
     narrative = summarize(notes=[make_note("2026-09-20T13:00:00+00:00", "BP follow-up.")]).narrative
-    assert narrative == (
-        "Recent-note summary of 1 note on Sep 20, 2026. Not a complete clinical history. "
-        "On Sep 20, 2026: BP follow-up."
-    )
+    assert narrative == "Sep 20, 2026: BP follow-up."
 
 
 def test_timeline_transitions():
@@ -94,32 +92,30 @@ def test_timeline_transitions():
         make_note("2026-09-01T15:00:00+00:00", "Years."),
         make_note("2026-09-20T15:00:00+00:00", "Last."),
     ]
-    narrative = summarize(notes=notes).narrative
-    for phrase in [
-        "On Jan 10, 2024: First.",
-        "Later the same day (Jan 10, 2024): Same day.",
-        "1 day later (Jan 11, 2024): Next day.",
-        "4 weeks later (Feb 8, 2024): Weeks.",
-        "5 months later (Jul 8, 2024): Months.",
-        "2 years later (Sep 1, 2026): Years.",
-        "Most recently (Sep 20, 2026): Last.",
-    ]:
-        assert phrase in narrative
+    assert summarize(notes=notes).narrative.split("\n") == [
+        "Jan 10, 2024: First.",
+        "Jan 10, 2024 (later the same day): Same day.",
+        "Jan 11, 2024 (1 day later): Next day.",
+        "Feb 8, 2024 (4 weeks later): Weeks.",
+        "Jul 8, 2024 (5 months later): Months.",
+        "Sep 1, 2026 (2 years later): Years.",
+        "Sep 20, 2026 (2 weeks later, most recent): Last.",
+    ]
 
 
-def test_coverage_states_omitted_notes():
+def test_coverage_is_reported_in_fields_not_repeated_in_the_text():
     notes = [make_note("2026-01-01T15:00:00+00:00"), make_note("2026-02-01T15:00:00+00:00")]
-    narrative = summarize(notes=notes, total=14).narrative
-    assert narrative.startswith(
-        "Recent-note summary of the latest 2 of 14 notes, from Jan 1, 2026 to Feb 1, 2026; "
-        "12 earlier notes not included. Not a complete clinical history."
-    )
+    summary = summarize(notes=notes, total=14)
+    assert (summary.notes_included, summary.notes_total) == (2, 14)
+    assert (summary.notes_from, summary.notes_to) == (date(2026, 1, 1), date(2026, 2, 1))
+    assert summary.narrative.startswith("Jan 1, 2026:")
 
 
 # 02:00 UTC on Mar 2 is still Mar 1 in New York.
 def test_dates_use_practice_timezone():
-    narrative = summarize(notes=[make_note("2026-03-02T02:00:00+00:00")]).narrative
-    assert "On Mar 1, 2026" in narrative
+    summary = summarize(notes=[make_note("2026-03-02T02:00:00+00:00")])
+    assert summary.narrative.startswith("Mar 1, 2026:")
+    assert summary.notes_from == summary.notes_to == date(2026, 3, 1)
 
 
 @pytest.mark.parametrize(
@@ -140,13 +136,13 @@ def test_dates_use_practice_timezone():
 )
 def test_excerpt(content, excerpt):
     narrative = summarize(notes=[make_note("2026-09-20T15:00:00+00:00", content)]).narrative
-    assert narrative.endswith(f"On Sep 20, 2026: {excerpt}")
+    assert narrative == f"Sep 20, 2026: {excerpt}"
 
 
 def test_long_excerpt_is_truncated_at_a_word_boundary():
     content = "Word " * 60
     narrative = summarize(notes=[make_note("2026-09-20T15:00:00+00:00", content)]).narrative
-    excerpt = narrative.split("On Sep 20, 2026: ")[1]
+    excerpt = narrative.removeprefix("Sep 20, 2026: ")
     assert excerpt.endswith("Word…")
     assert len(excerpt) <= 161
 
