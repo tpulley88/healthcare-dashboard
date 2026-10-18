@@ -31,7 +31,9 @@ services:
 
   # The web app. nginx serves the built frontend and forwards /api to the api service.
   web:
-    build: ./frontend
+    build:
+      context: ./frontend
+      target: runtime
     ports:
       - "8080:80"
     depends_on:
@@ -48,6 +50,21 @@ services:
     depends_on:
       db:
         condition: service_healthy
+
+  # Runs the browser tests against the running web app: docker compose --profile e2e run --rm e2e
+  # The tests create and delete their own patients in the app's database.
+  e2e:
+    profiles: [e2e]
+    build:
+      context: ./frontend
+      target: e2e
+    environment:
+      E2E_BASE_URL: http://web
+    # Failure traces land in frontend/test-results on the host.
+    volumes:
+      - ./frontend/test-results:/app/test-results
+    depends_on:
+      - web
 
 volumes:
   pgdata:
