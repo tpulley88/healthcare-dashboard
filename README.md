@@ -10,12 +10,38 @@ React + TypeScript (Vite) · FastAPI · PostgreSQL · Docker Compose
 
 ## Run it
 
-Requires Docker with Compose v2.
+### Prerequisites
+
+- [Git](https://git-scm.com/downloads)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or Docker Engine with the
+  Compose v2 plugin), running
+- Ports 8080 and 8000 free
+
+Node and Python are only needed to run the frontend checks and backend lint outside Docker
+(see [Tests](#tests)).
+
+### Get the code
 
 ```sh
-cp .env.example .env
-docker compose up --build
+git clone https://github.com/tpulley88/healthcare-dashboard.git
+cd healthcare-dashboard
 ```
+
+With the GitHub CLI: `gh repo clone tpulley88/healthcare-dashboard`. Or use **Code → Download
+ZIP** on the repository page and unzip it.
+
+### Start
+
+```sh
+cp .env.example .env          # local settings; the defaults work as they are
+docker compose up --build     # first build takes a few minutes
+```
+
+Open http://localhost:8080 once the `api` container logs `Application startup complete`.
+Stop with `Ctrl+C`, or `docker compose down` if started with `-d`.
+
+To get later changes: `git pull`, then `docker compose up --build` again. New migrations run
+on startup.
 
 | What | Where |
 |---|---|
@@ -31,7 +57,7 @@ if the database is empty. Restarts don't reseed. To start over:
 
 The patient summary works without any setup. To have a language model write the summary's
 narrative, set `OPENAI_API_KEY` in `.env` (and optionally `OPENAI_MODEL`, default
-`gpt-5-mini`), then restart the API. See [Patient summary](#patient-summary).
+`gpt-5-mini`), then run `docker compose up -d api` to apply it. See [Patient summary](#patient-summary).
 
 ### Tests
 
