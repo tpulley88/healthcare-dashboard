@@ -20,6 +20,7 @@ from app.generated_summary import (
     ProviderError,
     build_prompt,
     get_narrative_writer,
+    is_shortened,
     remembered_narrative,
 )
 from app.models import Note, Patient
@@ -88,9 +89,12 @@ def get_summary(
     Dates are shown in the practice's timezone.
 
     With `source=auto` (the default) and an OpenAI API key configured, a language model writes
-    the narrative from the full note text (`source` "llm"). The patient's name, date of birth,
-    and contact details aren't sent. The first request for a given set of notes can take
-    several seconds; repeats are answered from memory until the notes or profile change.
+    the narrative from the note text (`source` "llm"). Each note is sent up to its first
+    4,000 characters; `notes_shortened` counts the notes that were cut, so anything after that
+    point, such as a long note's Assessment and Plan, may be missing from the narrative.
+    The patient's name, date of birth, and contact details aren't sent.
+    The first request for a given set of notes can take several seconds; repeats are answered
+    from memory until the notes or profile change.
     A model can misread or leave out details, so check the narrative against the notes.
 
     Otherwise the narrative is built in (`source` "template"): one dated line per note,
@@ -109,7 +113,10 @@ def get_summary(
         narrative = remembered_narrative(build_prompt(patient, notes, total, today, tz), write)
     except ProviderError:
         return summary.model_copy(update={"fallback_reason": "provider_error"})
-    return summary.model_copy(update={"narrative": narrative, "source": "llm"})
+    shortened = sum(is_shortened(note) for note in notes)
+    return summary.model_copy(
+        update={"narrative": narrative, "source": "llm", "notes_shortened": shortened}
+    )
 
 
 def _recent_notes(patient: Patient, db: DbSession) -> tuple[list[Note], int]:

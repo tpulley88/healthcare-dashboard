@@ -273,6 +273,9 @@ class PatientSummary(BaseModel):
     wanted: "not_configured" (no API key) or "provider_error" (the service failed or timed out).
     It is null for generated narratives, for patients with no notes, and when the built-in
     summary was asked for.
+    `notes_shortened` counts the included notes that were too long to give the model in full;
+    only their beginning was used, so the narrative may miss what came later in them.
+    It is always 0 for the built-in narrative.
     """
 
     patient_id: uuid.UUID
@@ -290,4 +293,5 @@ class PatientSummary(BaseModel):
     notes_from: date | None
     notes_to: date | None
     source: Literal["template", "llm"] = "template"
+    notes_shortened: int = 0
     fallback_reason: Literal["not_configured", "provider_error"] | None = None

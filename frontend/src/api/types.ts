@@ -112,6 +112,11 @@ export interface PatientSummary {
   notes_to: string | null
   /** Who wrote the narrative. Every other field comes from the database either way. */
   source: 'template' | 'llm'
+  /**
+   * Included notes too long to give the model in full; only their beginning was used.
+   * Always 0 for the built-in narrative.
+   */
+  notes_shortened: number
   /** Why the built-in narrative was used when a generated one was wanted; null otherwise. */
   fallback_reason: 'not_configured' | 'provider_error' | null
 }

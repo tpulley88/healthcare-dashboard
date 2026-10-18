@@ -13,6 +13,7 @@ from app.generated_summary import (
     ProviderError,
     build_prompt,
     get_narrative_writer,
+    is_shortened,
 )
 from app.main import app
 from app.models import Note, Patient, PatientStatus
@@ -61,11 +62,38 @@ def test_prompt_has_profile_and_full_notes_oldest_first_without_identifiers():
         assert identifier not in prompt
 
 
+SHORTENED_MARKER = " [note shortened here; the rest was not provided]"
+
+
+def long_soap_note(day: str = "2026-09-20") -> Note:
+    """A note whose Assessment and Plan start after the character limit."""
+    subjective = "S: " + "Reports intermittent palpitations at rest. " * 120
+    assert len(subjective) > NOTE_CHARACTER_LIMIT
+    return make_note(
+        day, subjective + "\nO: Irregular rhythm.\nA: New atrial fibrillation.\nP: Start apixaban."
+    )
+
+
 def test_prompt_shortens_very_long_notes_and_says_so():
     long_note = make_note("2026-09-20", "x" * (NOTE_CHARACTER_LIMIT + 500))
     prompt = build_prompt(make_patient(), [long_note], 1, TODAY, TZ)
-    assert "x" * NOTE_CHARACTER_LIMIT + " [note shortened]" in prompt
+    assert "x" * NOTE_CHARACTER_LIMIT + SHORTENED_MARKER in prompt
     assert "x" * (NOTE_CHARACTER_LIMIT + 1) not in prompt
+
+
+def test_note_exactly_at_the_limit_is_sent_whole():
+    note = make_note("2026-09-20", "x" * NOTE_CHARACTER_LIMIT)
+    assert not is_shortened(note)
+    assert "note shortened" not in build_prompt(make_patient(), [note], 1, TODAY, TZ)
+    assert is_shortened(make_note("2026-09-20", "x" * (NOTE_CHARACTER_LIMIT + 1)))
+
+
+def test_assessment_and_plan_past_the_limit_are_not_sent():
+    prompt = build_prompt(make_patient(), [long_soap_note()], 1, TODAY, TZ)
+    assert "Reports intermittent palpitations" in prompt
+    assert "atrial fibrillation" not in prompt
+    assert "apixaban" not in prompt
+    assert prompt.endswith(SHORTENED_MARKER)
 
 
 def test_prompt_for_deceased_patient_has_no_age():
@@ -136,9 +164,33 @@ def test_summary_is_generated_when_available_with_facts_from_database(
         assert body[field] == built_in[field]
     assert body["notes_from"] == "2026-03-01"
     assert body["notes_to"] == "2026-09-20"
+    assert body["notes_shortened"] == 0
     [prompt] = writer.prompts
     assert "Started lisinopril 10 mg daily." in prompt
     assert "Ruiz" not in prompt and "555-0123" not in prompt
+
+
+def test_response_says_when_a_note_was_shortened_for_the_model(
+    client, use_writer, patient_with_notes
+):
+    writer = use_writer(FakeWriter())
+    note = long_soap_note()
+    response = client.post(
+        f"/patients/{patient_with_notes['id']}/notes",
+        json={"taken_at": "2026-10-01T10:00:00-04:00", "content": note.content},
+    )
+    assert response.status_code == 201
+
+    body = client.get(summary_url(patient_with_notes["id"])).json()
+    assert body["source"] == "llm"
+    assert body["notes_included"] == 3
+    assert body["notes_shortened"] == 1
+    [prompt] = writer.prompts
+    assert "apixaban" not in prompt
+    # The built-in summary reads the note's own Assessment and Plan, so nothing is cut there.
+    built_in = client.get(summary_url(patient_with_notes["id"], source="template")).json()
+    assert built_in["notes_shortened"] == 0
+    assert "New atrial fibrillation. Plan: Start apixaban." in built_in["narrative"]
 
 
 def test_template_source_never_contacts_the_model(client, use_writer, patient_with_notes):
