@@ -1,6 +1,4 @@
-import { expect, test } from '@playwright/test'
-
-import { deletePatient, uniqueLastName } from './helpers'
+import { deletePatient, expect, test, uniqueLastName } from './helpers'
 
 test('create a patient, chart a note, edit, and delete', async ({ page, request }) => {
   const lastName = uniqueLastName()

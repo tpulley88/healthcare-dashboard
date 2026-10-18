@@ -1,6 +1,6 @@
-import { expect, test, type Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
 
-import { createPatient, deletePatient } from './helpers'
+import { createPatient, deletePatient, expect, test } from './helpers'
 
 async function openEdit(page: Page, id: string) {
   await page.goto(`/patients/${id}/edit`)

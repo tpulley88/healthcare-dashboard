@@ -1,5 +1,4 @@
-import { expect, test } from '@playwright/test'
-
+import { expect, test } from './helpers'
 test('the dashboard is home, and the sidebar moves between sections', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible()

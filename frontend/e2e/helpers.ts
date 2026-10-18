@@ -1,4 +1,4 @@
-import { expect, type APIRequestContext } from '@playwright/test'
+import { test as base, expect, type APIRequestContext } from '@playwright/test'
 
 import type { Patient, PatientInput } from '../src/api/types'
 
@@ -28,3 +28,23 @@ export async function deletePatient(request: APIRequestContext, id: string): Pro
   const response = await request.delete(`/api/patients/${id}`)
   expect([204, 404]).toContain(response.status())
 }
+
+/**
+ * Playwright's `test`, except every summary request asks for the built-in summary,
+ * so the suite never calls the language model, even when the server has a key.
+ * A test can still answer the summary request itself with its own `page.route`,
+ * which takes precedence.
+ */
+export const test = base.extend({
+  // The second argument is usually called `use`; renamed so the React hooks lint rule ignores it.
+  context: async ({ context }, provide) => {
+    await context.route('**/api/patients/*/summary', (route) => {
+      const url = new URL(route.request().url())
+      url.searchParams.set('source', 'template')
+      return route.fallback({ url: url.toString() })
+    })
+    await provide(context)
+  },
+})
+
+export { expect }

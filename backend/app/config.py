@@ -6,9 +6,11 @@ A missing or invalid value therefore stops the server before it accepts any requ
 
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import PostgresDsn, field_validator
+from pydantic import PostgresDsn, SecretStr, field_validator
 from pydantic_core import PydanticCustomError
 from pydantic_settings import BaseSettings
+
+DEFAULT_OPENAI_MODEL = "gpt-5-mini"
 
 
 class Settings(BaseSettings):
@@ -18,6 +20,22 @@ class Settings(BaseSettings):
     # Summaries show calendar dates in the practice's local time.
     # In UTC, a note written at 9 PM in New York would show the next day's date.
     practice_timezone: str = "America/New_York"
+
+    # Optional. Without a key, generated summaries are switched off and only the template is used.
+    # SecretStr keeps the key out of logs and error messages.
+    openai_api_key: SecretStr | None = None
+    openai_model: str = DEFAULT_OPENAI_MODEL
+
+    # Compose passes unset variables as empty strings. Treat those as "not set".
+    @field_validator("openai_api_key", mode="before")
+    @classmethod
+    def _blank_key_is_unset(cls, value: object) -> object:
+        return None if isinstance(value, str) and not value.strip() else value
+
+    @field_validator("openai_model", mode="before")
+    @classmethod
+    def _blank_model_is_default(cls, value: object) -> object:
+        return DEFAULT_OPENAI_MODEL if isinstance(value, str) and not value.strip() else value
 
     @field_validator("practice_timezone")
     @classmethod

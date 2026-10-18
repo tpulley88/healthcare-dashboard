@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from alembic import command
 from app.config import settings
 from app.db import engine, get_db
+from app.generated_summary import clear_cache, get_narrative_writer
 from app.main import app
 
 
@@ -61,8 +62,14 @@ def db() -> Iterator[Session]:
 
 @pytest.fixture
 def client(db: Session) -> Iterator[TestClient]:
-    """An API client whose routes use the test's rolled-back session."""
+    """An API client whose routes use the test's rolled-back session.
+
+    Generated summaries are off unless a test turns them on with a fake writer,
+    so no test can reach the real service, even where an API key is set.
+    """
     app.dependency_overrides[get_db] = lambda: db
+    app.dependency_overrides[get_narrative_writer] = lambda: None
+    clear_cache()
     yield TestClient(app)
     app.dependency_overrides.clear()
 

@@ -267,7 +267,12 @@ class PatientSummary(BaseModel):
     It has one line per note, oldest first, separated by line breaks.
     `notes_included`, `notes_total`, `notes_from`, and `notes_to` say what it covers;
     show them alongside the narrative. The dates are calendar dates at the practice.
-    `source` is "template" today. It leaves room for an optional LLM-generated narrative later.
+    `source` says who wrote the narrative: "llm" for a generated one, "template" for the
+    built-in timeline. Every other field comes from the database either way.
+    `fallback_reason` says why a built-in narrative was returned when a generated one was
+    wanted: "not_configured" (no API key) or "provider_error" (the service failed or timed out).
+    It is null for generated narratives, for patients with no notes, and when the built-in
+    summary was asked for.
     """
 
     patient_id: uuid.UUID
@@ -284,4 +289,5 @@ class PatientSummary(BaseModel):
     notes_total: int
     notes_from: date | None
     notes_to: date | None
-    source: Literal["template"] = "template"
+    source: Literal["template", "llm"] = "template"
+    fallback_reason: Literal["not_configured", "provider_error"] | None = None

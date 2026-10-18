@@ -28,7 +28,8 @@ export function PatientDetailPage() {
         <>
           {/* Keep the chart, and any note being typed, when a background refresh fails. */}
           {error && <ErrorMessage error={error} onRetry={() => refetch()} />}
-          <Chart patient={data} />
+          {/* A new patient gets a fresh chart, so nothing typed or generated carries over. */}
+          <Chart key={data.id} patient={data} />
         </>
       ) : isPending ? (
         <p className="muted">Loading patient…</p>

@@ -9,7 +9,9 @@ from app.models import Base
 # Share the app's settings so migrations and the API always target the same database.
 config = context.config
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # Keep loggers that already exist. The tests run migrations inside the pytest process,
+    # and the default would silence the app's loggers for the rest of the run.
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = Base.metadata
 database_url = str(settings.database_url)

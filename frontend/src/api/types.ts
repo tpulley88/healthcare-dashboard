@@ -110,5 +110,8 @@ export interface PatientSummary {
   /** Practice-local dates of the first and last notes included; null when there are none. */
   notes_from: string | null
   notes_to: string | null
-  source: 'template'
+  /** Who wrote the narrative. Every other field comes from the database either way. */
+  source: 'template' | 'llm'
+  /** Why the built-in narrative was used when a generated one was wanted; null otherwise. */
+  fallback_reason: 'not_configured' | 'provider_error' | null
 }

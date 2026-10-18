@@ -22,6 +22,9 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:?set POSTGRES_USER in .env}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:?set POSTGRES_DB in .env}
       PRACTICE_TIMEZONE: ${PRACTICE_TIMEZONE:-America/New_York}
+      # Optional. Empty means generated summaries are off.
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-}
     ports:
       - "8000:8000"
     # Wait for Postgres to accept connections, not just for the container to start.
