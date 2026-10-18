@@ -22,16 +22,22 @@ export function NotesSection({ patientId }: { patientId: string }) {
       <NoteForm patientId={patientId} />
       {isPending ? (
         <p className="muted">Loading notes…</p>
-      ) : error ? (
+      ) : !data ? (
         <ErrorMessage error={error} onRetry={() => refetch()} />
-      ) : data.length === 0 ? (
-        <p className="muted">No notes yet.</p>
       ) : (
-        <ol className="note-list">
-          {data.map((note) => (
-            <NoteItem key={note.id} note={note} />
-          ))}
-        </ol>
+        <>
+          {/* A failed background refresh keeps the notes being read on screen. */}
+          {error && <ErrorMessage error={error} onRetry={() => refetch()} />}
+          {data.length === 0 ? (
+            <p className="muted">No notes yet.</p>
+          ) : (
+            <ol className="note-list">
+              {data.map((note) => (
+                <NoteItem key={note.id} note={note} />
+              ))}
+            </ol>
+          )}
+        </>
       )}
     </section>
   )

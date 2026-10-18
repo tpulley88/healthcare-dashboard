@@ -83,7 +83,13 @@ export async function toApiError(response: Response): Promise<ApiError> {
         fieldErrors[field] = issue.msg
       }
     }
-    return new ApiError(response.status, 'Please correct the highlighted fields.', fieldErrors)
+    if (Object.keys(fieldErrors).length > 0) {
+      return new ApiError(response.status, 'Please correct the highlighted fields.', fieldErrors)
+    }
+    // A malformed id in the URL, such as a truncated link, names no record that could exist.
+    if (detail.some((issue) => issue.loc[0] === 'path')) {
+      return new ApiError(response.status, statusMessage(404))
+    }
   }
 
   return new ApiError(response.status, statusMessage(response.status))

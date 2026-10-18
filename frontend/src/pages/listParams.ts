@@ -40,7 +40,7 @@ export function writeListParams(
   if (!('page' in changes)) next.page = 1
 
   const url = new URLSearchParams()
-  if (next.search.trim()) url.set('search', next.search)
+  if (next.search.trim()) url.set('search', next.search.trim())
   if (next.status) url.set('status', next.status)
   if (next.sort !== 'name') url.set('sort', next.sort)
   if (next.order !== 'asc') url.set('order', next.order)

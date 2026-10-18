@@ -237,11 +237,12 @@ What this demo would need before real patients:
 
 - **Advanced backend:** sorting and filtering query parameters; Alembic migrations.
 - **Testing:** pytest API tests (179); Vitest unit tests for the API client, formatting, list
-  URL parameters and form logic (43); Playwright end-to-end tests for the main journeys (18):
+  URL parameters and form logic (45); Playwright end-to-end tests for the main journeys (20):
   create, chart a note, edit and delete a patient; search, filter, sort and paging, with Back
   and reload keeping the view; note validation messages and deleting a note; edit conflicts
-  between two tabs; edits surviving a failed refresh; the summary; navigation, a deleted
-  patient, 404 and a phone-sized screen.
+  between two tabs; edits, notes, the summary and the dashboard staying on screen when a
+  background refresh fails; the summary; navigation, a deleted patient, 404 and a
+  phone-sized screen.
 - **Language-model summary** with a built-in fallback (the summary hint in Part 3).
 
 ## Project layout

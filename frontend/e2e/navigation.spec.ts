@@ -24,6 +24,23 @@ test('the dashboard is home, and the sidebar moves between sections', async ({ p
   await expect(page).toHaveURL('/')
 })
 
+test('a failed background refresh keeps the dashboard on screen', async ({ page }) => {
+  await page.goto('/')
+  const counts = page.getByRole('list', { name: 'Patients by status' })
+  const recent = page.getByRole('region', { name: 'Patients with recent visits' })
+  await expect(counts.getByRole('link', { name: /All patients/ })).toContainText(/\d+/)
+  await expect(recent.getByRole('listitem').first()).toBeVisible()
+
+  await page.route('**/api/patients?**', (route) => route.abort())
+  await page.evaluate(() => window.dispatchEvent(new Event('visibilitychange')))
+
+  await expect(page.getByRole('alert').first()).toContainText('Could not reach the server', {
+    timeout: 10_000,
+  })
+  await expect(counts.getByRole('link', { name: /All patients/ })).toContainText(/\d+/)
+  await expect(recent.getByRole('listitem').first()).toBeVisible()
+})
+
 test('the header offers a new patient from any page', async ({ page }) => {
   await page.goto('/patients')
   await page.getByRole('link', { name: 'New patient' }).click()

@@ -60,6 +60,17 @@ describe('request', () => {
     expect(error.message).toBe('Please correct the highlighted fields.')
   })
 
+  it('reports a malformed id in the URL as not found, not as fields to correct', async () => {
+    const detail = [
+      { loc: ['path', 'patient_id'], msg: 'Input should be a valid UUID', type: 'uuid_parsing' },
+    ]
+    respondWith(422, JSON.stringify({ detail }))
+    const error = await errorFrom(request('/patients/not-a-uuid'))
+    expect(error.status).toBe(422)
+    expect(error.message).toBe('This record could not be found. It may have been deleted.')
+    expect(error.fieldErrors).toEqual({})
+  })
+
   it.each([
     ['an HTML error page', 502, '<html>Bad Gateway</html>', 'text/html'],
     ['an empty body', 500, '', 'application/json'],

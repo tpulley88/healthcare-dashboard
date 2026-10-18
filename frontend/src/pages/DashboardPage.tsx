@@ -52,9 +52,11 @@ export function DashboardPage() {
 
       <FindPatient />
 
-      {countError ? (
+      {/* Counts already loaded stay on screen if a background refresh fails. */}
+      {countError && (
         <ErrorMessage error={countError} onRetry={() => counts.forEach((q) => q.refetch())} />
-      ) : (
+      )}
+      {(!countError || counts.every((query) => query.data)) && (
         <ul className="stat-grid" aria-label="Patients by status">
           <StatCard label="All patients" value={total} to="/patients" />
           {STATUSES.map((status, index) => (
@@ -72,20 +74,25 @@ export function DashboardPage() {
         <h2 id="recent-heading">Patients with recent visits</h2>
         {recent.isPending ? (
           <p className="muted">Loading…</p>
-        ) : recent.error ? (
+        ) : !recent.data ? (
           <ErrorMessage error={recent.error} onRetry={() => recent.refetch()} />
-        ) : recent.data.items.length === 0 ? (
-          <p className="muted">No visits recorded yet.</p>
         ) : (
-          <ul className="recent-list">
-            {recent.data.items.map((patient) => (
-              <li key={patient.id}>
-                <Link to={`/patients/${patient.id}`}>{fullName(patient)}</Link>
-                <span className="muted">Last visit {formatDate(patient.last_visit_date)}</span>
-                <StatusBadge status={patient.status} />
-              </li>
-            ))}
-          </ul>
+          <>
+            {recent.error && <ErrorMessage error={recent.error} onRetry={() => recent.refetch()} />}
+            {recent.data.items.length === 0 ? (
+              <p className="muted">No visits recorded yet.</p>
+            ) : (
+              <ul className="recent-list">
+                {recent.data.items.map((patient) => (
+                  <li key={patient.id}>
+                    <Link to={`/patients/${patient.id}`}>{fullName(patient)}</Link>
+                    <span className="muted">Last visit {formatDate(patient.last_visit_date)}</span>
+                    <StatusBadge status={patient.status} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
         )}
         <p className="small">
           <Link to="/patients?sort=last_visit_date&order=desc">See all by last visit</Link>

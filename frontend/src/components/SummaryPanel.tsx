@@ -7,7 +7,7 @@ import { ErrorMessage } from './ErrorMessage'
 
 const FALLBACK_REASONS: Record<NonNullable<PatientSummary['fallback_reason']>, string> = {
   not_configured: 'Generated summaries aren’t set up on this server.',
-  provider_error: 'The summary service didn’t respond.',
+  provider_error: 'The summary service couldn’t produce a summary.',
 }
 
 /**
@@ -30,10 +30,12 @@ export function SummaryPanel({ patientId }: { patientId: string }) {
         <p className="muted">
           Preparing summary… The first one for new notes can take a few seconds.
         </p>
-      ) : error ? (
+      ) : !data ? (
         <ErrorMessage error={error} onRetry={() => refetch()} />
       ) : (
         <>
+          {/* A failed background refresh keeps the summary being read on screen. */}
+          {error && <ErrorMessage error={error} onRetry={() => refetch()} />}
           <p className="coverage">{coverageLabel(data)}</p>
           <p className="summary-headline">{data.headline}</p>
           {data.source === 'llm' ? <Generated summary={data} /> : <BuiltIn summary={data} />}

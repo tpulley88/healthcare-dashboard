@@ -91,7 +91,8 @@ export interface NoteCreate {
 }
 
 /**
- * The narrative covers only the most recent notes, using the opening of each one.
+ * The narrative covers only the most recent notes: written by a language model from their text,
+ * or the built-in timeline of each note's assessment and plan (the opening of free-text notes).
  * The notes_* fields say how much of the chart it reflects.
  */
 export interface PatientSummary {

@@ -67,4 +67,32 @@ test.describe('clinical notes', () => {
     await expect(summary).toContainText('No clinical notes on file.')
     await expect(summary).not.toContainText('Entered on the wrong chart.')
   })
+
+  test('a failed background refresh keeps the notes and summary on screen', async ({
+    page,
+    request,
+  }) => {
+    const response = await request.post(`/api/patients/${patientId}/notes`, {
+      data: { taken_at: '2026-01-05T10:00:00-05:00', content: 'Reviewed home BP log.' },
+    })
+    expect(response.status()).toBe(201)
+    await page.goto(`/patients/${patientId}`)
+    const notes = page.getByRole('region', { name: /^Notes/ })
+    const summary = page.getByRole('region', { name: 'Summary' })
+    await expect(notes).toContainText('Reviewed home BP log.')
+    await expect(summary).toContainText('Reviewed home BP log.')
+
+    // From now on, reloading anything for this patient fails as if the network dropped.
+    await page.route(`**/api/patients/${patientId}**`, (route) =>
+      route.request().method() === 'GET' ? route.abort() : route.fallback(),
+    )
+    await page.evaluate(() => window.dispatchEvent(new Event('visibilitychange')))
+
+    await expect(notes.getByRole('alert')).toContainText('Could not reach the server', {
+      timeout: 10_000,
+    })
+    await expect(summary.getByRole('alert')).toContainText('Could not reach the server')
+    await expect(notes).toContainText('Reviewed home BP log.')
+    await expect(summary).toContainText('Reviewed home BP log.')
+  })
 })

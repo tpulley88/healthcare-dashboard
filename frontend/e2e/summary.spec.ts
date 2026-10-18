@@ -72,7 +72,9 @@ test.describe('patient summary', () => {
     await page.goto(`/patients/${patientId}`)
 
     const summary = page.getByRole('region', { name: 'Summary' })
-    await expect(summary).toContainText('Built-in summary. The summary service didn’t respond.')
+    await expect(summary).toContainText(
+      'Built-in summary. The summary service couldn’t produce a summary.',
+    )
     await expect(summary).toContainText(
       'Mar 1, 2026: Hypertension, above goal. Plan: Start lisinopril 10 mg.',
     )

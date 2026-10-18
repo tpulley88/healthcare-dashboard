@@ -52,6 +52,10 @@ describe('writeListParams', () => {
     )
   })
 
+  it('trims the search, so "ana " and "ana" are the same view', () => {
+    expect(writeListParams(read(''), { search: '  ana ' }).toString()).toBe('search=ana')
+  })
+
   it('leaves defaults out of the URL', () => {
     expect(writeListParams(read(''), { page: 1 }).toString()).toBe('')
   })
