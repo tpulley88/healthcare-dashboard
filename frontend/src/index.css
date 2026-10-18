@@ -185,8 +185,14 @@ a {
   font-weight: 500;
 }
 
+.field-inline.search {
+  max-width: 100%;
+}
+
+/* Up to 18rem, narrower when the screen is. */
 .field-inline.search input {
-  width: 18rem;
+  flex: 0 1 18rem;
+  min-width: 0;
 }
 
 input,
@@ -221,8 +227,19 @@ textarea {
 
 /* Table */
 
+/* On phones the list keeps what a clinician scans for: name, age, status, allergies,
+   last visit. Date of birth, conditions, and phone are in the chart. */
+@media (max-width: 40rem) {
+  .secondary-column {
+    display: none;
+  }
+}
+
 .table-wrap {
   overflow-x: auto;
+  /* Clips absolutely positioned children, such as screen-reader labels, to the scroll area.
+     Without it they escape and make the whole page scroll sideways on phones. */
+  position: relative;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -342,6 +359,8 @@ textarea {
 
 .chart-header h1 {
   margin: 0;
+  /* A long name breaks onto more lines instead of widening the page. */
+  overflow-wrap: anywhere;
 }
 
 .chart-header p {
@@ -350,6 +369,7 @@ textarea {
 
 .chart-title {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem;
 }
@@ -396,7 +416,9 @@ textarea {
   color: var(--muted);
 }
 
+/* Long emails and addresses wrap within the profile card. */
 .details dd {
+  overflow-wrap: anywhere;
   margin: 0;
   white-space: pre-line;
 }

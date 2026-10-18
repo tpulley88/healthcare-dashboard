@@ -169,12 +169,18 @@ function PatientTable({
           <tr>
             {sortHeader('name', 'Name')}
             {sortHeader('age', 'Age')}
-            <th scope="col">Date of birth</th>
+            <th scope="col" className="secondary-column">
+              Date of birth
+            </th>
             <th scope="col">Status</th>
             <th scope="col">Allergies</th>
-            <th scope="col">Conditions</th>
+            <th scope="col" className="secondary-column">
+              Conditions
+            </th>
             {sortHeader('last_visit_date', 'Last visit')}
-            <th scope="col">Phone</th>
+            <th scope="col" className="secondary-column">
+              Phone
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -197,14 +203,14 @@ function PatientTable({
                 </Link>
               </td>
               <td>{patient.age}</td>
-              <td>{formatDate(patient.date_of_birth)}</td>
+              <td className="secondary-column">{formatDate(patient.date_of_birth)}</td>
               <td>
                 <StatusBadge status={patient.status} />
               </td>
               <AllergyCell allergies={patient.allergies} />
               <ConditionsCell conditions={patient.conditions} />
               <td>{formatDate(patient.last_visit_date)}</td>
-              <td>{patient.phone ?? '—'}</td>
+              <td className="secondary-column">{patient.phone ?? '—'}</td>
             </tr>
           ))}
         </tbody>
@@ -241,7 +247,10 @@ function ConditionsCell({ conditions }: { conditions: string[] | null }) {
   const preview = conditionsPreview(conditions)
   const empty = conditions === null || conditions.length === 0
   return (
-    <td className={empty ? 'conditions muted' : 'conditions'} title={conditions?.join(', ')}>
+    <td
+      className={`conditions secondary-column${empty ? ' muted' : ''}`}
+      title={conditions?.join(', ')}
+    >
       {preview}
     </td>
   )

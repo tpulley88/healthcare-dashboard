@@ -127,6 +127,10 @@ the server's UTC.
 - **Search without blocking.** The search box waits 300 ms after typing stops, and the
   previous page stays on screen while the next loads, so the list never blanks. The API pages
   on the server, so 100+ patients (120 are seeded) never load at once.
+- **Small screens.** Below 48rem the sidebar becomes a row of links and the chart's columns
+  stack. On phones the patient list keeps name, age, status, allergies and last visit (date
+  of birth, conditions and phone are in the chart), and the table scrolls inside its own box.
+  A browser test checks every main page at 320px for sideways scrolling.
 - **No patient data in logs.** The API and nginx access logs drop query strings, so name
   searches aren't recorded. Generated-summary failures log only the error type.
 - **Last visit is its own field**, not "date of the latest note": a phone note or a lab result

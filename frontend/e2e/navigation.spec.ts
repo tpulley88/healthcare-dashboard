@@ -1,4 +1,4 @@
-import { expect, test } from './helpers'
+import { createPatient, deletePatient, expect, test } from './helpers'
 test('the dashboard is home, and the sidebar moves between sections', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible()
@@ -35,15 +35,43 @@ test('unknown addresses show the not-found page', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Page not found' })).toBeVisible()
 })
 
-test('on a phone-sized screen the layout fits without sideways scrolling', async ({ page }) => {
-  await page.setViewportSize({ width: 375, height: 740 })
-  for (const path of ['/', '/patients/new']) {
-    await page.goto(path)
-    await expect(page.getByRole('navigation', { name: 'Main' })).toBeVisible()
-    const overflow = await page.evaluate(
-      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-    )
-    expect(overflow, `horizontal overflow on ${path}`).toBeLessThanOrEqual(0)
+test('on a phone-sized screen the layout fits without sideways scrolling', async ({
+  page,
+  request,
+}) => {
+  // Long values are the usual cause of sideways scrolling.
+  const patient = await createPatient(request, {
+    email: 'firstname.middlename.lastname@example-family-practice.com',
+  })
+  const loaded = {
+    '/': page.getByRole('heading', { name: 'Dashboard', level: 1 }),
+    '/patients': page.getByRole('row').nth(1),
+    [`/patients/${patient.id}`]: page.getByRole('region', { name: 'Summary' }),
+    [`/patients/${patient.id}/edit`]: page.getByLabel('First name'),
+    '/patients/new': page.getByLabel('First name'),
+  }
+  try {
+    await page.setViewportSize({ width: 320, height: 740 })
+    for (const [path, content] of Object.entries(loaded)) {
+      await page.goto(path)
+      await expect(content).toBeVisible()
+      await expect(page.locator('[aria-busy="true"]')).toHaveCount(0)
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      )
+      expect(overflow, `horizontal overflow on ${path}`).toBeLessThanOrEqual(0)
+    }
+
+    // The list keeps the columns a clinician scans for; the rest are in the chart.
+    await page.goto('/patients')
+    for (const name of ['Name', 'Age', 'Status', 'Allergies', 'Last visit']) {
+      await expect(page.getByRole('columnheader', { name })).toBeVisible()
+    }
+    for (const name of ['Date of birth', 'Conditions', 'Phone']) {
+      await expect(page.getByRole('columnheader', { name })).toBeHidden()
+    }
+  } finally {
+    await deletePatient(request, patient.id)
   }
 })
 
