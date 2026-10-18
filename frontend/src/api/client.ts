@@ -28,11 +28,20 @@ export class ApiError extends Error {
 
 const GENERIC_MESSAGE = 'Something went wrong. Please try again.'
 
-const STATUS_MESSAGES: Record<number, string> = {
-  404: 'This record could not be found. It may have been deleted.',
-  500: 'The server ran into a problem. Please try again.',
-  502: 'The server is unavailable right now. Please try again shortly.',
-  503: 'The server is unavailable right now. Please try again shortly.',
+/**
+ * A message by status, for error responses that don't carry one from the API,
+ * such as an HTML page from the proxy.
+ * The API's own 4xx responses (404, 412, 422) always include a message, which is used instead.
+ */
+function statusMessage(status: number): string {
+  if (status === 404) return 'This record could not be found. It may have been deleted.'
+  // Retrying won't change a 4xx answer, so this doesn't suggest trying again.
+  if (status >= 400 && status < 500) {
+    return 'The request could not be completed. Reload the page and check your entries.'
+  }
+  // 500, 502, 503, 504: whatever the cause, staff can only wait and retry.
+  if (status >= 500) return 'The server is unavailable right now. Please try again shortly.'
+  return GENERIC_MESSAGE
 }
 
 interface ValidationIssue {
@@ -77,7 +86,7 @@ export async function toApiError(response: Response): Promise<ApiError> {
     return new ApiError(response.status, 'Please correct the highlighted fields.', fieldErrors)
   }
 
-  return new ApiError(response.status, STATUS_MESSAGES[response.status] ?? GENERIC_MESSAGE)
+  return new ApiError(response.status, statusMessage(response.status))
 }
 
 /**

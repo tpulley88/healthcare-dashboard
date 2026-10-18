@@ -74,6 +74,23 @@ describe('request', () => {
     expect(error.fieldErrors).toEqual({})
   })
 
+  it.each([500, 502, 503, 504])(
+    'gives every %i without a message the same server message',
+    async (status) => {
+      respondWith(status, '<html>Error</html>', 'text/html')
+      const error = await errorFrom(request('/patients'))
+      expect(error.message).toBe('The server is unavailable right now. Please try again shortly.')
+    },
+  )
+
+  it.each([400, 409, 413])('does not suggest retrying a %i without a message', async (status) => {
+    respondWith(status, '', 'text/html')
+    const error = await errorFrom(request('/patients'))
+    expect(error.message).toBe(
+      'The request could not be completed. Reload the page and check your entries.',
+    )
+  })
+
   it('reports a network failure as status 0', async () => {
     vi.stubGlobal(
       'fetch',
