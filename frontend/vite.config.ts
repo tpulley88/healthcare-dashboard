@@ -13,6 +13,8 @@ export default defineConfig({
     },
   },
   test: {
+    // Browser tests in e2e/ run with Playwright, not Vitest.
+    include: ['src/**/*.test.ts'],
     // Run date and time tests in a fixed timezone, whatever the machine's own setting.
     env: { TZ: 'America/New_York' },
   },
