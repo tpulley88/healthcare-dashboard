@@ -29,6 +29,9 @@ export function PatientListPage() {
     <section>
       <div className="page-header">
         <h1>Patients</h1>
+        <Link to="/patients/new" className="button button-primary">
+          New patient
+        </Link>
       </div>
 
       <div className="toolbar">

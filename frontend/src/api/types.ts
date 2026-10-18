@@ -32,6 +32,28 @@ export interface Patient {
   version: number
 }
 
+/**
+ * The fields staff can set when creating or editing a patient.
+ * Optional fields are null when blank. On an edit, send only the fields that changed.
+ */
+export type PatientInput = Pick<
+  Patient,
+  | 'first_name'
+  | 'last_name'
+  | 'date_of_birth'
+  | 'phone'
+  | 'email'
+  | 'street'
+  | 'city'
+  | 'state'
+  | 'postal_code'
+  | 'blood_type'
+  | 'allergies'
+  | 'conditions'
+  | 'status'
+  | 'last_visit_date'
+>
+
 export interface PatientPage {
   items: Patient[]
   /** Every matching patient, not just this page. */
