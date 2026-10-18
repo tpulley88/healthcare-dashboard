@@ -6,6 +6,7 @@ from sqlalchemy import select, text
 from sqlalchemy import update as sql_update
 from sqlalchemy.exc import IntegrityError
 
+from app.clock import practice_today
 from app.models import Note, Patient
 from app.schemas import calculate_age, earliest_birth_date
 from tests.helpers import MISSING_ID, error_fields
@@ -46,9 +47,9 @@ def test_create_requires_name_and_birth_date(client):
     ("field", "value"),
     [
         ("first_name", "   "),
-        ("date_of_birth", (date.today() + timedelta(days=1)).isoformat()),
+        ("date_of_birth", (practice_today() + timedelta(days=1)).isoformat()),
         ("date_of_birth", "1850-01-01"),
-        ("date_of_birth", (earliest_birth_date(date.today()) - timedelta(days=1)).isoformat()),
+        ("date_of_birth", (earliest_birth_date(practice_today()) - timedelta(days=1)).isoformat()),
         ("phone", "555-0142"),
         ("email", "not-an-email"),
         ("state", "ZZ"),
@@ -56,7 +57,7 @@ def test_create_requires_name_and_birth_date(client):
         ("blood_type", "C+"),
         ("status", "discharged"),
         ("allergies", ["Penicillin", ""]),
-        ("last_visit_date", (date.today() + timedelta(days=1)).isoformat()),
+        ("last_visit_date", (practice_today() + timedelta(days=1)).isoformat()),
         ("id", MISSING_ID),
         ("deleted_at", None),
     ],
@@ -106,7 +107,7 @@ def test_create_rejects_malformed_phone(client, raw):
 
 
 def test_create_accepts_birth_date_exactly_at_age_limit(create_patient):
-    boundary = earliest_birth_date(date.today()).isoformat()
+    boundary = earliest_birth_date(practice_today()).isoformat()
     assert create_patient(date_of_birth=boundary)["date_of_birth"] == boundary
 
 
