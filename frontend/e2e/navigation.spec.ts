@@ -35,6 +35,19 @@ test('unknown addresses show the not-found page', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Page not found' })).toBeVisible()
 })
 
+test("a deleted patient's chart says it can't be found, without offering a retry", async ({
+  page,
+  request,
+}) => {
+  const { id } = await createPatient(request)
+  await deletePatient(request, id)
+  await page.goto(`/patients/${id}`)
+  await expect(page.getByRole('alert')).toHaveText('Patient not found')
+  await expect(page.getByRole('button', { name: 'Try again' })).toHaveCount(0)
+  await page.getByRole('link', { name: '← All patients' }).click()
+  await expect(page).toHaveURL('/patients')
+})
+
 test('on a phone-sized screen the layout fits without sideways scrolling', async ({
   page,
   request,
