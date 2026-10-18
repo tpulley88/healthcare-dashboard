@@ -24,12 +24,16 @@ export function PatientDetailPage() {
       <p className="back-link">
         <Link to="/patients">← All patients</Link>
       </p>
-      {isPending ? (
+      {data ? (
+        <>
+          {/* Keep the chart, and any note being typed, when a background refresh fails. */}
+          {error && <ErrorMessage error={error} onRetry={() => refetch()} />}
+          <Chart patient={data} />
+        </>
+      ) : isPending ? (
         <p className="muted">Loading patient…</p>
-      ) : error ? (
-        <ErrorMessage error={error} onRetry={() => refetch()} />
       ) : (
-        <Chart patient={data} />
+        <ErrorMessage error={error} onRetry={() => refetch()} />
       )}
     </section>
   )

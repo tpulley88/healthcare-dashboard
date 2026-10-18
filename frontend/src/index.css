@@ -77,10 +77,89 @@ a {
   font-size: 0.85rem;
 }
 
+.app-shell {
+  display: grid;
+  grid-template-columns: 12rem minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+  grid-template-areas:
+    'header header'
+    'sidebar main';
+  min-height: 100vh;
+}
+
+.app-header {
+  grid-area: header;
+}
+
+.header-nav {
+  margin-left: auto;
+}
+
+.sidebar {
+  grid-area: sidebar;
+  padding: 1rem 0.75rem;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+}
+
+.sidebar ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.sidebar a {
+  display: block;
+  padding: 0.45rem 0.75rem;
+  border-radius: var(--radius);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.sidebar a:hover {
+  background: var(--bg);
+}
+
+.sidebar a.active {
+  background: var(--info-bg);
+  color: var(--accent);
+  font-weight: 600;
+}
+
 .app-main {
+  grid-area: main;
+  width: 100%;
   max-width: 72rem;
-  margin: 0 auto;
   padding: 1.5rem;
+}
+
+/* On narrow screens the sidebar becomes a row of links under the header. */
+@media (max-width: 48rem) {
+  .app-shell {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto 1fr;
+    grid-template-areas:
+      'header'
+      'sidebar'
+      'main';
+  }
+
+  .sidebar {
+    padding: 0.5rem 0.75rem;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar ul {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .app-main {
+    padding: 1rem;
+  }
 }
 
 .page-header {
@@ -709,4 +788,80 @@ a.button {
   font-size: 0.8rem;
   font-weight: 500;
   color: var(--danger);
+}
+
+/* Dashboard */
+
+.find-patient {
+  display: grid;
+  gap: 0.4rem;
+  margin-bottom: 1.25rem;
+}
+
+.find-patient label {
+  font-weight: 600;
+}
+
+.find-patient-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.find-patient-row input {
+  flex: 1;
+  min-width: 0;
+  max-width: 28rem;
+}
+
+.stat-grid {
+  list-style: none;
+  margin: 0 0 1.25rem;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 1rem;
+}
+
+.stat-card {
+  display: grid;
+  gap: 0.15rem;
+  padding: 1rem 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.stat-card:hover {
+  border-color: var(--accent);
+}
+
+.stat-value {
+  font-size: 1.75rem;
+  font-weight: 600;
+}
+
+.stat-label {
+  color: var(--muted);
+}
+
+.recent-list {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+}
+
+.recent-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.75rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.recent-list li > a {
+  font-weight: 500;
+  min-width: 12rem;
 }

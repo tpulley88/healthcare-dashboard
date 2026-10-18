@@ -31,13 +31,17 @@ export function EditPatientPage() {
       <p className="back-link">
         <Link to={`/patients/${patientId}`}>← Back to chart</Link>
       </p>
-      {isPending ? (
+      {data ? (
+        <>
+          {/* A failed background refresh mustn't unmount the form and lose unsaved edits. */}
+          {error && <ErrorMessage error={error} onRetry={() => refetch()} />}
+          {/* The form copies the patient once, so a background refetch can't overwrite typing. */}
+          <EditForm key={data.id} loaded={data} />
+        </>
+      ) : isPending ? (
         <p className="muted">Loading patient…</p>
-      ) : error ? (
-        <ErrorMessage error={error} onRetry={() => refetch()} />
       ) : (
-        // The form copies the patient once, so a background refetch can't overwrite typing.
-        <EditForm key={data.id} loaded={data} />
+        <ErrorMessage error={error} onRetry={() => refetch()} />
       )}
     </section>
   )
