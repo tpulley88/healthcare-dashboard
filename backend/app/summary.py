@@ -1,6 +1,8 @@
-"""Template-based patient summary.
+"""Built-in patient summary, used when a generated one isn't available.
 
-The narrative is a dated timeline built from the opening of each recent note.
+The narrative is a dated timeline with one line per recent note.
+For SOAP notes the line is the Assessment and Plan, the part clinicians read first.
+Other notes contribute their opening sentence or two.
 It puts notes in order and connects them in time, but it doesn't interpret them clinically.
 Nothing here reads the database or the clock, so the same inputs always give the same summary.
 """
@@ -18,7 +20,16 @@ RECENT_NOTE_LIMIT = 10
 # so the next sentence is included too.
 HEADING_LENGTH = 40
 EXCERPT_LIMIT = 160
+# Assessment and Plan together carry more, so they get more room.
+ASSESSMENT_PLAN_LIMIT = 240
 _SENTENCE_BREAK = re.compile(r"(?<=[.!?])\s+")
+# A SOAP section label at the start of a line, such as "A:" or "Assessment:".
+# "A/P" and "Assessment and Plan" are common combined headings.
+_SOAP_LABEL = re.compile(
+    r"^[ \t]*(assessment and plan|a/p|subjective|objective|assessment|plan|s|o|a|p)[ \t]*:[ \t]*",
+    re.IGNORECASE | re.MULTILINE,
+)
+_SECTION_KEYS = {"subjective": "s", "objective": "o", "assessment": "a", "plan": "p"}
 
 
 def _format_date(value: date) -> str:
@@ -63,18 +74,47 @@ def _headline(patient: Patient, today: date) -> str:
     )
 
 
-def _excerpt(content: str) -> str:
-    """The opening of a note: its first sentence, plus the second if the first is a heading.
+def _shorten(text: str, limit: int) -> str:
+    """Collapse whitespace, then cut at a word boundary with "…" if longer than `limit`."""
+    text = " ".join(text.split())
+    if len(text) > limit:
+        text = text[:limit].rsplit(" ", 1)[0].rstrip(",;:") + "…"
+    return text
 
+
+def _soap_sections(content: str) -> dict[str, str]:
+    """The note's SOAP sections by key ("s", "o", "a", "p", or "ap"); empty if it has none."""
+    matches = list(_SOAP_LABEL.finditer(content))
+    if not matches:
+        return {}
+    sections = {}
+    for match, following in zip(matches, matches[1:] + [None], strict=True):
+        label = match.group(1).lower()
+        key = "ap" if label in ("a/p", "assessment and plan") else _SECTION_KEYS.get(label, label)
+        end = following.start() if following else len(content)
+        sections[key] = content[match.end() : end].strip()
+    return sections
+
+
+def _excerpt(content: str) -> str:
+    """One line for the timeline.
+
+    For a SOAP note, its Assessment and Plan. Otherwise its first sentence,
+    plus the second if the first is a heading.
     Line breaks become spaces. Long excerpts are cut at a word boundary and end with "…".
     """
+    sections = _soap_sections(content)
+    if "ap" in sections or "a" in sections or "p" in sections:
+        parts = [sections.get("ap"), sections.get("a")]
+        if sections.get("p"):
+            parts.append(f"Plan: {sections['p']}")
+        return _shorten(" ".join(part for part in parts if part), ASSESSMENT_PLAN_LIMIT)
+
     sentences = _SENTENCE_BREAK.split(" ".join(content.split()))
     excerpt = sentences[0]
     if len(excerpt) < HEADING_LENGTH and len(sentences) > 1:
         excerpt = f"{excerpt} {sentences[1]}"
-    if len(excerpt) > EXCERPT_LIMIT:
-        excerpt = excerpt[:EXCERPT_LIMIT].rsplit(" ", 1)[0].rstrip(",;:") + "…"
-    return excerpt
+    return _shorten(excerpt, EXCERPT_LIMIT)
 
 
 def _gap(days: int) -> str:

@@ -152,3 +152,44 @@ def test_age_uses_the_given_date():
     patient = make_patient(date_of_birth=date(1958, 10, 18))
     assert build_summary(patient, [], 0, date(2026, 10, 17), TZ).age == 67
     assert build_summary(patient, [], 0, date(2026, 10, 18), TZ).age == 68
+
+
+# SOAP notes
+
+
+@pytest.mark.parametrize(
+    ("content", "line"),
+    [
+        (
+            "S: Knee pain on stairs.\nO: Crepitus, no effusion.\n"
+            "A: Osteoarthritis of both knees.\nP: Acetaminophen as needed. PT referral.",
+            "Osteoarthritis of both knees. Plan: Acetaminophen as needed. PT referral.",
+        ),
+        (
+            "Subjective: Breathing unchanged.\nObjective: FEV1 60%.\n"
+            "Assessment: COPD, stable.\nPlan: Continue tiotropium.",
+            "COPD, stable. Plan: Continue tiotropium.",
+        ),
+        (
+            "S: Follow-up.\nO: BP 124/78.\nA/P: Hypertension at goal; continue lisinopril.",
+            "Hypertension at goal; continue lisinopril.",
+        ),
+        # A label in the middle of a line isn't a section heading.
+        (
+            "BP 120/80. Patient says: feeling fine. Plan: none.",
+            "BP 120/80. Patient says: feeling fine.",
+        ),
+    ],
+    ids=["letters", "words", "combined", "free-text"],
+)
+def test_soap_notes_contribute_assessment_and_plan(content, line):
+    note = make_note("2026-09-20T13:00:00+00:00", content)
+    narrative = build_summary(make_patient(), [note], 1, TODAY, TZ).narrative
+    assert narrative == f"Sep 20, 2026: {line}"
+
+
+def test_long_assessment_and_plan_is_shortened():
+    note = make_note("2026-09-20T13:00:00+00:00", "A: Stable.\nP: " + "Continue. " * 40)
+    line = build_summary(make_patient(), [note], 1, TODAY, TZ).narrative
+    assert line.endswith("…")
+    assert len(line.removeprefix("Sep 20, 2026: ")) <= 241

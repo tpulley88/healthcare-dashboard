@@ -27,9 +27,12 @@ TELEPHONE_NOTE = seed_data.GENERAL_NOTES[2]
 
 # SpO2 ranges depend on the note, so COPD and exacerbation notes stay clinically plausible.
 def _template_values(rng: random.Random) -> dict[str, object]:
+    sbp, dbp = rng.randint(112, 152), rng.randint(68, 94)
     return {
-        "sbp": rng.randint(112, 152),
-        "dbp": rng.randint(68, 94),
+        "sbp": sbp,
+        "dbp": dbp,
+        # Matches the reading, using the common 130/80 target.
+        "bp_control": "at goal" if sbp < 130 and dbp < 80 else "above goal",
         "hr": rng.randint(58, 98),
         "spo2": rng.randint(95, 99),
         "spo2_copd": rng.randint(88, 94),

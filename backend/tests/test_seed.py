@@ -55,3 +55,13 @@ def test_seed_dates_stay_before_the_anchor_date(db):
         assert all(note.taken_at.date() < ANCHOR_DATE for note in patient.notes)
         if patient.last_visit_date is not None:
             assert patient.last_visit_date < ANCHOR_DATE
+
+
+def test_visit_notes_are_soap_and_phone_notes_are_free_text(db):
+    for patient in seeded(db):
+        for note in patient.notes:
+            if note.content.startswith("Telephone"):
+                assert "\nA:" not in note.content
+            else:
+                for label in ("S: ", "\nO: ", "\nA: ", "\nP: "):
+                    assert label in note.content

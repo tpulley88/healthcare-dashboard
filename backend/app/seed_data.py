@@ -48,62 +48,103 @@ ALLERGIES = [
     "Iodinated contrast",
 ]  # fmt: skip
 
+# Notes follow the SOAP format most outpatient charts use: Subjective, Objective, Assessment,
+# Plan, one section per line. The telephone note is free text, as phone encounters usually are.
 # Each condition maps to follow-up note templates. Placeholders are filled by the seed generator.
 CONDITION_NOTES = {
     "Hypertension": [
-        "BP follow-up. Home readings averaging {sbp}/{dbp}. Tolerating lisinopril without "
-        "cough or dizziness. Reinforced low-sodium diet.",
-        "Hypertension check. Office BP {sbp}/{dbp}, HR {hr}. No headaches or chest pain. "
-        "Continue current antihypertensive regimen.",
+        "S: Here for blood pressure follow-up. Home readings averaging {sbp}/{dbp}. "
+        "Tolerating lisinopril without cough or dizziness.\n"
+        "O: BP {sbp}/{dbp}, HR {hr}. Heart regular, no edema.\n"
+        "A: Hypertension, {bp_control}.\n"
+        "P: Continue lisinopril 10 mg daily. Reinforced low-sodium diet. Recheck in 3 months.",
+        "S: Hypertension check. No headaches, chest pain, or vision changes.\n"
+        "O: Office BP {sbp}/{dbp}, HR {hr}. BMP last month: creatinine 0.9, potassium 4.3.\n"
+        "A: Hypertension, {bp_control}. Kidney function stable on ACE inhibitor.\n"
+        "P: Continue current regimen. Repeat BMP in 6 months.",
     ],
     "Type 2 diabetes": [
-        "Diabetes follow-up. A1c {a1c}%. Reviewed glucose log; no hypoglycemic episodes. "
-        "Foot exam normal, monofilament sensation intact.",
-        "A1c {a1c}%. Discussed carbohydrate counting and activity goals. Continue metformin.",
+        "S: Diabetes follow-up. Checking glucose daily; no hypoglycemic episodes.\n"
+        "O: A1c {a1c}%. Foot exam normal, monofilament sensation intact.\n"
+        "A: Type 2 diabetes, A1c {a1c}%.\n"
+        "P: Continue metformin 1000 mg twice daily. Annual eye exam referral placed.",
+        "S: Reviewing A1c result and diet. Struggling with evening snacking.\n"
+        "O: A1c {a1c}%, weight stable.\n"
+        "A: Type 2 diabetes, glycemic control needs work.\n"
+        "P: Discussed carbohydrate counting and activity goals. Continue metformin; "
+        "recheck A1c in 3 months.",
     ],
     "Asthma": [
-        "Asthma check. Using albuterol rescue inhaler {rescue} days per week. Lungs clear, "
-        "no wheeze. Peak flow {peak_flow} L/min. Reviewed inhaler technique with spacer.",
-        "Mild exacerbation after URI. Expiratory wheeze bilaterally, SpO2 "
-        "{spo2_exacerbation}% on room air. Short oral steroid course started; asthma "
-        "action plan reviewed.",
+        "S: Asthma check. Using albuterol rescue inhaler {rescue} days per week. "
+        "No night waking.\n"
+        "O: Lungs clear, no wheeze. Peak flow {peak_flow} L/min.\n"
+        "A: Asthma, well controlled.\n"
+        "P: Continue current inhalers. Reviewed inhaler technique with spacer.",
+        "S: Wheezing and chest tightness for 3 days after a cold.\n"
+        "O: Expiratory wheeze bilaterally, SpO2 {spo2_exacerbation}% on room air.\n"
+        "A: Mild asthma exacerbation triggered by URI.\n"
+        "P: Prednisone 40 mg daily for 5 days. Asthma action plan reviewed. "
+        "Return if worsening.",
     ],
     "COPD": [
-        "COPD follow-up. Baseline dyspnea on exertion (mMRC grade 2). SpO2 {spo2_copd}% on "
-        "room air at rest. Diminished breath sounds bilaterally, no wheeze. Continues tiotropium "
-        "daily; pulmonary rehab referral discussed.",
-        "Spirometry: FEV1/FVC {fev1_fvc}, FEV1 {fev1}% predicted. No exacerbations since "
-        "last visit. Influenza and pneumococcal vaccines up to date.",
+        "S: COPD follow-up. Baseline dyspnea on exertion, mMRC grade 2. No recent "
+        "exacerbations.\n"
+        "O: SpO2 {spo2_copd}% on room air at rest. Diminished breath sounds bilaterally, "
+        "no wheeze.\n"
+        "A: COPD, stable.\n"
+        "P: Continue tiotropium daily. Pulmonary rehab referral discussed.",
+        "S: Routine COPD review with spirometry. Breathing unchanged.\n"
+        "O: FEV1/FVC {fev1_fvc}, FEV1 {fev1}% predicted.\n"
+        "A: COPD, moderate airflow obstruction, stable since last visit.\n"
+        "P: Continue current inhalers. Influenza and pneumococcal vaccines up to date.",
     ],
     "Hyperlipidemia": [
-        "Lipid panel reviewed: LDL {ldl} mg/dL. Continue atorvastatin; no myalgias reported.",
+        "S: Lipid follow-up. No muscle aches on statin.\n"
+        "O: LDL {ldl} mg/dL.\n"
+        "A: Hyperlipidemia on atorvastatin.\n"
+        "P: Continue atorvastatin 20 mg daily. Repeat lipid panel in 1 year.",
     ],
     "Hypothyroidism": [
-        "TSH {tsh} mIU/L on current levothyroxine dose. Asymptomatic. No dose change.",
+        "S: Thyroid follow-up. No fatigue, weight change, or cold intolerance.\n"
+        "O: TSH {tsh} mIU/L.\n"
+        "A: Hypothyroidism, euthyroid on current dose.\n"
+        "P: No change to levothyroxine. Recheck TSH in 1 year.",
     ],
     "Obstructive sleep apnea": [
-        "Sleep apnea follow-up. CPAP download shows use {cpap_hours} hours/night on "
-        "{cpap_pct}% of nights, residual AHI {ahi}. Mask fit good, no skin breakdown.",
+        "S: Sleep apnea follow-up. Feels more rested; mask comfortable.\n"
+        "O: CPAP download: {cpap_hours} hours/night on {cpap_pct}% of nights, residual AHI "
+        "{ahi}. No skin breakdown.\n"
+        "A: Obstructive sleep apnea, adherent to CPAP.\n"
+        "P: Continue CPAP at current settings. Follow up in 1 year.",
     ],
     "Atrial fibrillation": [
-        "AFib follow-up. Rate controlled, HR {hr} irregularly irregular. Continues "
-        "apixaban; no bleeding or bruising reported.",
+        "S: AFib follow-up. Occasional palpitations, no dizziness or syncope.\n"
+        "O: HR {hr}, irregularly irregular. No bruising.\n"
+        "A: Atrial fibrillation, rate controlled, on anticoagulation.\n"
+        "P: Continue apixaban 5 mg twice daily and metoprolol. No bleeding reported.",
     ],
     "Osteoarthritis": [
-        "Bilateral knee pain, worse with stairs. Mild crepitus, no effusion. Continue "
-        "acetaminophen as needed; physical therapy referral placed.",
+        "S: Bilateral knee pain, worse with stairs.\n"
+        "O: Mild crepitus both knees, no effusion, full range of motion.\n"
+        "A: Osteoarthritis of both knees.\n"
+        "P: Acetaminophen as needed. Physical therapy referral placed.",
     ],
     "Generalized anxiety disorder": [
-        "Anxiety follow-up. GAD-7 score {gad7}. Sleeping better; continues sertraline and "
-        "weekly therapy.",
+        "S: Anxiety follow-up. Sleeping better; attending weekly therapy.\n"
+        "O: GAD-7 score {gad7}. Calm, good eye contact.\n"
+        "A: Generalized anxiety disorder, improving.\n"
+        "P: Continue sertraline 50 mg daily and weekly therapy.",
     ],
 }
 
 GENERAL_NOTES = [
-    "Annual wellness visit. BP {sbp}/{dbp}, HR {hr}, SpO2 {spo2}% on room air. Age-"
-    "appropriate screenings reviewed. No new concerns.",
-    "Acute visit for productive cough x {days} days. Afebrile, SpO2 {spo2}% on room air. "
-    "Scattered rhonchi clearing with cough. Likely viral bronchitis; supportive care and "
-    "return precautions given.",
+    "S: Annual wellness visit. No new concerns.\n"
+    "O: BP {sbp}/{dbp}, HR {hr}, SpO2 {spo2}% on room air. Exam unremarkable.\n"
+    "A: Health maintenance.\n"
+    "P: Age-appropriate screenings reviewed and ordered. Return in 1 year.",
+    "S: Productive cough for {days} days, no fever or shortness of breath.\n"
+    "O: Afebrile, SpO2 {spo2}% on room air. Scattered rhonchi clearing with cough.\n"
+    "A: Likely viral bronchitis.\n"
+    "P: Supportive care. Return precautions given for fever or shortness of breath.",
     "Telephone follow-up on recent lab results. All values within normal limits; patient notified.",
 ]
