@@ -51,3 +51,42 @@ export interface PatientListParams {
   sort: SortField
   order: SortOrder
 }
+
+export interface Note {
+  id: string
+  patient_id: string
+  /** When the care happened, as an ISO timestamp in UTC. */
+  taken_at: string
+  content: string
+  /** When the note was saved. */
+  created_at: string
+}
+
+export interface NoteCreate {
+  /** Must include a UTC offset, for example 2026-09-20T09:30:00-04:00. */
+  taken_at: string
+  content: string
+}
+
+/**
+ * The narrative covers only the most recent notes, using the opening of each one.
+ * The notes_* fields say how much of the chart it reflects.
+ */
+export interface PatientSummary {
+  patient_id: string
+  name: string
+  age: number
+  date_of_birth: string
+  blood_type: BloodType | null
+  status: PatientStatus
+  conditions: string[] | null
+  allergies: string[] | null
+  headline: string
+  narrative: string
+  notes_included: number
+  notes_total: number
+  /** Practice-local dates of the first and last notes included; null when there are none. */
+  notes_from: string | null
+  notes_to: string | null
+  source: 'template'
+}

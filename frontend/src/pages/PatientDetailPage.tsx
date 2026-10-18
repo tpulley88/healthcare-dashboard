@@ -2,10 +2,15 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router'
 
 import { getPatient } from '../api/patients'
+import type { Patient } from '../api/types'
+import { AllergyBanner } from '../components/AllergyBanner'
 import { ErrorMessage } from '../components/ErrorMessage'
-import { fullName } from '../format'
+import { NotesSection } from '../components/NotesSection'
+import { ProfileCard } from '../components/ProfileCard'
+import { StatusBadge } from '../components/StatusBadge'
+import { SummaryPanel } from '../components/SummaryPanel'
+import { formatDate, fullName } from '../format'
 
-// Placeholder for M6, which adds the profile, summary, and notes.
 export function PatientDetailPage() {
   const { patientId = '' } = useParams()
   const { data, error, isPending, refetch } = useQuery({
@@ -15,7 +20,7 @@ export function PatientDetailPage() {
 
   return (
     <section>
-      <p>
+      <p className="back-link">
         <Link to="/patients">← All patients</Link>
       </p>
       {isPending ? (
@@ -23,8 +28,36 @@ export function PatientDetailPage() {
       ) : error ? (
         <ErrorMessage error={error} onRetry={() => refetch()} />
       ) : (
-        <h1>{fullName(data)}</h1>
+        <Chart patient={data} />
       )}
     </section>
+  )
+}
+
+function Chart({ patient }: { patient: Patient }) {
+  // No date of death is stored, so an age for a deceased patient would keep counting up.
+  const ageLine =
+    patient.status === 'deceased'
+      ? `Born ${formatDate(patient.date_of_birth)}`
+      : `${patient.age} years old · Born ${formatDate(patient.date_of_birth)}`
+
+  return (
+    <>
+      <header className="chart-header">
+        <div className="chart-title">
+          <h1>{fullName(patient)}</h1>
+          <StatusBadge status={patient.status} />
+        </div>
+        <p className="muted">{ageLine}</p>
+        <AllergyBanner allergies={patient.allergies} />
+      </header>
+      <div className="chart-layout">
+        <ProfileCard patient={patient} />
+        <div className="chart-main">
+          <SummaryPanel patientId={patient.id} />
+          <NotesSection patientId={patient.id} />
+        </div>
+      </div>
+    </>
   )
 }

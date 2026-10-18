@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest'
 
-import { formatDate } from './format'
+import {
+  conditionsPreview,
+  coverageLabel,
+  formatDate,
+  formatDateTime,
+  localDateTimeNow,
+  withLocalOffset,
+} from './format'
+
+// Vitest sets TZ for the whole run (see vite.config.ts), so these results are predictable.
 
 describe('formatDate', () => {
   it('shows the calendar date as written, with no timezone shift', () => {
@@ -10,5 +19,72 @@ describe('formatDate', () => {
 
   it('shows a dash for a missing date', () => {
     expect(formatDate(null)).toBe('—')
+  })
+})
+
+describe('formatDateTime', () => {
+  it('shows local time with the zone name', () => {
+    expect(formatDateTime('2026-09-21T20:45:00Z')).toBe('Sep 21, 2026, 4:45 PM EDT')
+    expect(formatDateTime('2026-01-15T14:00:00Z')).toBe('Jan 15, 2026, 9:00 AM EST')
+  })
+
+  it('shows the local date when it differs from the UTC date', () => {
+    expect(formatDateTime('2026-10-18T02:00:00Z')).toBe('Oct 17, 2026, 10:00 PM EDT')
+  })
+})
+
+describe('withLocalOffset', () => {
+  it('uses the offset in effect on that date', () => {
+    expect(withLocalOffset('2026-09-20T09:30')).toBe('2026-09-20T09:30:00-04:00')
+    expect(withLocalOffset('2026-01-15T09:30')).toBe('2026-01-15T09:30:00-05:00')
+  })
+})
+
+describe('localDateTimeNow', () => {
+  it('formats local time for a datetime-local input', () => {
+    expect(localDateTimeNow(new Date('2026-10-18T02:05:00Z'))).toBe('2026-10-17T22:05')
+  })
+})
+
+describe('coverageLabel', () => {
+  it('says how many notes the summary covers, over which dates', () => {
+    expect(
+      coverageLabel({
+        notes_included: 10,
+        notes_total: 14,
+        notes_from: '2025-06-16',
+        notes_to: '2026-03-09',
+      }),
+    ).toBe(
+      'Recent-note summary of the latest 10 of 14 notes · Jun 16, 2025 – Mar 9, 2026 · ' +
+        'Not a complete clinical history',
+    )
+    expect(
+      coverageLabel({
+        notes_included: 1,
+        notes_total: 1,
+        notes_from: '2026-03-09',
+        notes_to: '2026-03-09',
+      }),
+    ).toBe('Recent-note summary of 1 note · Mar 9, 2026 · Not a complete clinical history')
+  })
+
+  it('says when there are no notes', () => {
+    expect(
+      coverageLabel({ notes_included: 0, notes_total: 0, notes_from: null, notes_to: null }),
+    ).toBe('No notes yet')
+  })
+})
+
+describe('conditionsPreview', () => {
+  it('lists up to two conditions, then counts the rest', () => {
+    expect(conditionsPreview(['Asthma'])).toBe('Asthma')
+    expect(conditionsPreview(['Asthma', 'COPD'])).toBe('Asthma, COPD')
+    expect(conditionsPreview(['Asthma', 'COPD', 'Hypertension'])).toBe('Asthma, COPD +1 more')
+  })
+
+  it('keeps unknown distinct from none known', () => {
+    expect(conditionsPreview(null)).toBe('Unknown')
+    expect(conditionsPreview([])).toBe('None known')
   })
 })

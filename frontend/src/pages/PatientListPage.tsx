@@ -6,7 +6,7 @@ import { listPatients } from '../api/patients'
 import type { PatientListParams, PatientPage, PatientStatus, SortField } from '../api/types'
 import { ErrorMessage } from '../components/ErrorMessage'
 import { StatusBadge } from '../components/StatusBadge'
-import { formatDate, STATUS_LABELS } from '../format'
+import { conditionsPreview, formatDate, STATUS_LABELS } from '../format'
 import { readListParams, writeListParams } from './listParams'
 
 const SEARCH_DELAY_MS = 300
@@ -171,6 +171,8 @@ function PatientTable({
             {sortHeader('age', 'Age')}
             <th scope="col">Date of birth</th>
             <th scope="col">Status</th>
+            <th scope="col">Allergies</th>
+            <th scope="col">Conditions</th>
             {sortHeader('last_visit_date', 'Last visit')}
             <th scope="col">Phone</th>
           </tr>
@@ -199,6 +201,8 @@ function PatientTable({
               <td>
                 <StatusBadge status={patient.status} />
               </td>
+              <AllergyCell allergies={patient.allergies} />
+              <ConditionsCell conditions={patient.conditions} />
               <td>{formatDate(patient.last_visit_date)}</td>
               <td>{patient.phone ?? '—'}</td>
             </tr>
@@ -206,6 +210,40 @@ function PatientTable({
         </tbody>
       </table>
     </div>
+  )
+}
+
+/**
+ * A red dot when allergies are recorded, with the list in the tooltip and in hidden text for
+ * screen readers. An empty cell could be misread as "no allergies", so the other two states
+ * are spelled out: NKA (no known allergies) and Unknown.
+ */
+function AllergyCell({ allergies }: { allergies: string[] | null }) {
+  if (allergies === null) return <td className="muted">Unknown</td>
+  if (allergies.length === 0) {
+    return (
+      <td className="muted">
+        <abbr title="No known allergies">NKA</abbr>
+      </td>
+    )
+  }
+  const text = `Allergies: ${allergies.join(', ')}`
+  return (
+    <td title={text}>
+      <span className="allergy-marker" aria-hidden="true" />
+      <span className="visually-hidden">{text}</span>
+    </td>
+  )
+}
+
+/** A short preview for scanning the list. The full list is in the tooltip and the chart. */
+function ConditionsCell({ conditions }: { conditions: string[] | null }) {
+  const preview = conditionsPreview(conditions)
+  const empty = conditions === null || conditions.length === 0
+  return (
+    <td className={empty ? 'conditions muted' : 'conditions'} title={conditions?.join(', ')}>
+      {preview}
+    </td>
   )
 }
 

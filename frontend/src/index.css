@@ -176,6 +176,12 @@ textarea {
   color: var(--muted);
 }
 
+/* Conditions can be long, so this column wraps instead of widening the table. */
+.data-table td.conditions {
+  white-space: normal;
+  min-width: 12rem;
+}
+
 /* Sortable headers look like links, unlike the plain headers beside them. */
 .sort-button {
   display: inline-flex;
@@ -243,6 +249,255 @@ textarea {
   color: inherit;
   font-weight: 600;
   text-decoration: none;
+}
+
+/* Patient chart */
+
+.back-link {
+  margin: 0 0 var(--space);
+}
+
+.chart-header {
+  margin-bottom: 1.5rem;
+}
+
+.chart-header h1 {
+  margin: 0;
+}
+
+.chart-header p {
+  margin: 0.25rem 0 0.75rem;
+}
+
+.chart-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.chart-layout {
+  display: grid;
+  grid-template-columns: minmax(16rem, 1fr) 2.5fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.chart-main {
+  display: grid;
+  gap: 1.5rem;
+  min-width: 0;
+}
+
+@media (max-width: 52rem) {
+  .chart-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  padding: 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.card p {
+  margin: 0 0 0.75rem;
+}
+
+.details {
+  margin: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.details dt {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.details dd {
+  margin: 0;
+  white-space: pre-line;
+}
+
+/* Sized to its content, not the page, but placed first so it's seen first. */
+.allergy-banner {
+  display: inline-block;
+  max-width: 100%;
+  padding: 0.5rem 0.9rem;
+  border-radius: var(--radius);
+  border: 1px solid;
+}
+
+.allergy-present {
+  background: var(--danger-bg);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.allergy-unknown {
+  background: #fff4e0;
+  border-color: #b26a00;
+  color: #7a4a00;
+}
+
+.allergy-none {
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+.coverage {
+  display: inline-block;
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius);
+  background: var(--info-bg);
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.timeline {
+  margin: 0 0 0.75rem;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.summary-headline {
+  font-weight: 600;
+}
+
+.small {
+  font-size: 0.85rem;
+}
+
+/* Notes */
+
+.note-form {
+  display: grid;
+  gap: 0.75rem;
+  padding-bottom: 1.25rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.field {
+  display: grid;
+  gap: 0.3rem;
+  font-weight: 500;
+}
+
+.field input {
+  justify-self: start;
+}
+
+.field-error {
+  color: var(--danger);
+  font-weight: 400;
+  font-size: 0.875rem;
+}
+
+[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+.button-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+.button-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.button-danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #ffffff;
+}
+
+.link-button {
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--muted);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.link-button:hover {
+  color: var(--danger);
+}
+
+.note-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.note + .note {
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.note-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 0.35rem;
+}
+
+.note-header time {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+/* Keep the line breaks staff typed into the note. */
+.note-content {
+  white-space: pre-wrap;
+  margin: 0;
+}
+
+.confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.6rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--radius);
+  background: var(--danger-bg);
+}
+
+/* Patient list allergies column */
+
+.allergy-marker {
+  display: inline-block;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  background: var(--danger);
+  vertical-align: middle;
+}
+
+abbr[title] {
+  text-decoration: none;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 /* Status and messages */
