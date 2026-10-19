@@ -239,14 +239,18 @@ _cache: OrderedDict[str, GeneratedSummary] = OrderedDict()
 _cache_lock = threading.Lock()
 
 
-def remembered_narrative(prompt: str, write: NarrativeWriter) -> GeneratedSummary:
+def remembered_narrative(
+    prompt: str, write: NarrativeWriter, note_dates: set[date]
+) -> GeneratedSummary:
     """The generated summary for this prompt, generated once and then reused.
 
     The key covers everything the summary depends on (model, instructions, profile, note text,
     dates), so any change to them produces a fresh summary.
     Reopening an unchanged chart is instant and costs nothing.
     The cache lives in this process only, so it starts empty after a restart and
-    isn't shared between servers. Failures aren't remembered; the next request tries again.
+    isn't shared between servers.
+    Failures aren't remembered, including answers whose action items don't fit the notes
+    (`note_dates`), so the next request asks the model again.
     """
     key = hashlib.sha256(f"{settings.openai_model}\n{INSTRUCTIONS}\n{prompt}".encode()).hexdigest()
     with _cache_lock:
@@ -254,6 +258,8 @@ def remembered_narrative(prompt: str, write: NarrativeWriter) -> GeneratedSummar
             _cache.move_to_end(key)
             return _cache[key]
     generated = write(prompt)
+    # Checked before storing, so a rejected answer is never served from the cache.
+    check_action_items(generated.action_items, note_dates)
     with _cache_lock:
         _cache[key] = generated
         while len(_cache) > CACHE_SIZE:

@@ -19,7 +19,6 @@ from app.generated_summary import (
     NarrativeWriter,
     ProviderError,
     build_prompt,
-    check_action_items,
     get_narrative_writer,
     is_shortened,
     remembered_narrative,
@@ -117,8 +116,9 @@ def get_summary(
     if write is None:
         return summary.model_copy(update={"fallback_reason": "not_configured"})
     try:
-        generated = remembered_narrative(build_prompt(patient, notes, total, today, tz), write)
-        check_action_items(generated.action_items, {clock.practice_date(n.taken_at) for n in notes})
+        prompt = build_prompt(patient, notes, total, today, tz)
+        note_dates = {clock.practice_date(note.taken_at) for note in notes}
+        generated = remembered_narrative(prompt, write, note_dates)
     except ProviderError:
         return summary.model_copy(update={"fallback_reason": "provider_error"})
     shortened = sum(is_shortened(note) for note in notes)

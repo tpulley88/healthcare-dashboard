@@ -328,6 +328,20 @@ def test_failures_are_not_remembered(client, use_writer, patient_with_notes):
     assert client.get(url).json()["narrative"] == "Recovered."
 
 
+def test_an_answer_rejected_for_its_action_items_is_not_remembered(
+    client, use_writer, patient_with_notes
+):
+    url = summary_url(patient_with_notes["id"])
+    misread = ActionItem("Repeat BMP", date(2026, 3, 2), None)  # no note is dated Mar 2
+    writer = use_writer(FakeWriter(action_items=[misread]))
+    assert client.get(url).json()["fallback_reason"] == "provider_error"
+    assert client.get(url).json()["fallback_reason"] == "provider_error"
+    # Asked again rather than served from the cache.
+    assert len(writer.prompts) == 2
+    use_writer(FakeWriter("Recovered."))
+    assert client.get(url).json()["narrative"] == "Recovered."
+
+
 def test_summary_is_404_for_missing_patient(client, use_writer):
     writer = use_writer(FakeWriter())
     response = client.get(summary_url("00000000-0000-0000-0000-000000000000"))

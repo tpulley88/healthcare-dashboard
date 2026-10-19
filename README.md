@@ -185,9 +185,9 @@ The seeded notes are written in SOAP format (Subjective, Objective, Assessment, 
   not the model, compares the due date with today and marks the item **overdue** (never for a
   deceased patient), and lists items due soonest first. An item that matches none of the notes'
   dates, or is due before it was planned, means the model misread the notes, so the built-in
-  summary is shown instead. Identifiers, allergies and conditions always come from the database, so the model can't
-  change them. It is labeled as generated, and a spinner shows while it's prepared or updated
-  after a new note.
+  summary is shown instead, and the rejected answer isn't reused. Identifiers, allergies and
+  conditions always come from the database, so the model can't change them. It is labeled as
+  generated, and a spinner shows while it's prepared or updated after a new note.
   - **Sent to the provider:** status, age, conditions, allergies, and the dated text of the
     recent notes. **Not sent:** name, date of birth, contact details, address, ids. Note text
     itself may still contain identifiers. Requests use `store=False`.
@@ -195,11 +195,12 @@ The seeded notes are written in SOAP format (Subjective, Objective, Assessment, 
     response's `notes_shortened` counts notes that were cut, and the chart says so, because the
     Assessment and Plan, at the end of a SOAP note, are what gets lost.
   - **Speed:** the first summary for a set of notes takes roughly 10–20 seconds. Repeats come
-    from an in-memory cache keyed by the prompt, so they are instant until a note or the profile
-    changes.
-  - **Fallback:** no key, a provider error, or a 30-second timeout returns the built-in
-    narrative with `fallback_reason` (`not_configured` or `provider_error`), and the chart says
-    why. There is no retry, because the clinician is waiting.
+    from an in-memory cache keyed by the model, the instructions and the prompt, so they are
+    instant until a note or the profile changes.
+  - **Fallback:** no key, a provider error, a 30-second timeout, or an answer that's unusable or
+    doesn't fit the notes returns the built-in narrative with `fallback_reason` (`not_configured`
+    or `provider_error`), and the chart says why. There is no retry, because the clinician is
+    waiting.
   - **Prompt injection:** the instructions say notes are data, not instructions, and the
     model must not add diagnoses, results or recommendations that aren't in the notes. This
     reduces the risk; it doesn't remove it.
@@ -251,13 +252,14 @@ What this demo would need before real patients:
 ## Stretch goals
 
 - **Advanced backend:** sorting and filtering query parameters; Alembic migrations.
-- **Testing:** pytest API tests (190); Vitest unit tests for the API client, formatting, list
+- **Testing:** pytest API tests (191); Vitest unit tests for the API client, formatting, list
   URL parameters and form logic (46); Playwright end-to-end tests for the main journeys (23):
   create, chart a note, edit and delete a patient; search, filter, sort and paging, with Back
   and reload keeping the view; note validation messages and deleting a note; edit conflicts
   between two tabs; edits, notes, the summary and the dashboard staying on screen when a
-  background refresh fails; the summary, its action items and loading spinner; navigation, a deleted patient, 404 and a
-  phone-sized screen; a page that fails to render; a deceased patient's age.
+  background refresh fails; the summary, its action items and loading spinner; navigation, a
+  deleted patient, 404 and a phone-sized screen; a page that fails to render; a deceased
+  patient's age.
 - **Language-model summary** with a built-in fallback (the summary hint in Part 3).
 
 ## Project layout
