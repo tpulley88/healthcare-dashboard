@@ -1,15 +1,16 @@
 import logging
 import uuid
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from types import SimpleNamespace
 from zoneinfo import ZoneInfo
 
 import openai
 import pytest
 
-from app import generated_summary
+from app import clock, generated_summary
 from app.generated_summary import (
     NOTE_CHARACTER_LIMIT,
+    ActionItem,
     GeneratedSummary,
     ProviderError,
     build_prompt,
@@ -157,7 +158,7 @@ def test_summary_is_generated_when_available_with_facts_from_database(
     writer = use_writer(
         FakeWriter(
             "Started lisinopril in March; BP improved by September.",
-            action_items=["Recheck BP in 3 months (planned Sep 20, 2026)"],
+            action_items=[ActionItem("Recheck BP", date(2026, 9, 20), date(2026, 12, 20))],
         )
     )
     body = client.get(summary_url(patient_with_notes["id"])).json()
@@ -165,7 +166,7 @@ def test_summary_is_generated_when_available_with_facts_from_database(
     assert body["source"] == "llm"
     assert body["fallback_reason"] is None
     assert body["narrative"] == "Started lisinopril in March; BP improved by September."
-    assert body["action_items"] == ["Recheck BP in 3 months (planned Sep 20, 2026)"]
+    assert [item["action"] for item in body["action_items"]] == ["Recheck BP"]
     built_in = client.get(summary_url(patient_with_notes["id"], source="template")).json()
     assert built_in["action_items"] == []
     # Everything except the narrative, action items and source matches the built-in summary.
@@ -229,6 +230,68 @@ def test_falls_back_to_built_in_when_not_configured(client, patient_with_notes):
     assert response.status_code == 200
     assert response.json()["source"] == "template"
     assert response.json()["fallback_reason"] == "not_configured"
+
+
+def test_action_items_are_due_soonest_first_and_overdue_is_worked_out_from_today(
+    client, monkeypatch, use_writer, patient_with_notes
+):
+    monkeypatch.setattr(clock, "now", lambda: datetime(2026, 10, 18, 16, 0, tzinfo=UTC))
+    use_writer(
+        FakeWriter(
+            action_items=[
+                ActionItem("Screening labs", date(2026, 9, 20), None),
+                ActionItem("Sleep medicine follow-up", date(2026, 9, 20), date(2027, 3, 20)),
+                ActionItem("Repeat BMP", date(2026, 3, 1), date(2026, 9, 1)),
+                # Due today is not overdue yet.
+                ActionItem("BP check", date(2026, 9, 20), date(2026, 10, 18)),
+            ]
+        )
+    )
+    items = client.get(summary_url(patient_with_notes["id"])).json()["action_items"]
+
+    assert items == [
+        {"action": "Repeat BMP", "noted_on": "2026-03-01", "due_on": "2026-09-01", "overdue": True},
+        {"action": "BP check", "noted_on": "2026-09-20", "due_on": "2026-10-18", "overdue": False},
+        {
+            "action": "Sleep medicine follow-up",
+            "noted_on": "2026-09-20",
+            "due_on": "2027-03-20",
+            "overdue": False,
+        },
+        {"action": "Screening labs", "noted_on": "2026-09-20", "due_on": None, "overdue": False},
+    ]
+
+
+def test_nothing_is_overdue_for_a_deceased_patient(
+    client, monkeypatch, use_writer, patient_with_notes
+):
+    monkeypatch.setattr(clock, "now", lambda: datetime(2026, 10, 18, 16, 0, tzinfo=UTC))
+    response = client.put(f"/patients/{patient_with_notes['id']}", json={"status": "deceased"})
+    assert response.status_code == 200
+    use_writer(
+        FakeWriter(action_items=[ActionItem("Repeat BMP", date(2026, 3, 1), date(2026, 9, 1))])
+    )
+    [item] = client.get(summary_url(patient_with_notes["id"])).json()["action_items"]
+    assert item["due_on"] == "2026-09-01"
+    assert item["overdue"] is False
+
+
+@pytest.mark.parametrize(
+    "item",
+    [
+        ActionItem("Repeat BMP", date(2026, 3, 2), None),
+        ActionItem("Repeat BMP", date(2026, 3, 1), date(2026, 2, 1)),
+    ],
+    ids=["matches-no-note", "due-before-planned"],
+)
+def test_an_action_item_that_doesnt_fit_the_notes_falls_back_to_built_in(
+    client, use_writer, patient_with_notes, item
+):
+    use_writer(FakeWriter(action_items=[item]))
+    body = client.get(summary_url(patient_with_notes["id"])).json()
+    assert body["source"] == "template"
+    assert body["fallback_reason"] == "provider_error"
+    assert body["action_items"] == []
 
 
 def test_falls_back_to_built_in_when_provider_fails(client, use_writer, patient_with_notes):
@@ -296,9 +359,20 @@ def openai_writer_with(monkeypatch, outcome):
 
 
 def test_openai_writer_sends_instructions_and_asks_not_to_store(monkeypatch):
-    answer = '{"summary": "  A summary.  ", "action_items": [" Recheck BP ", "  "]}'
+    answer = (
+        '{"summary": "  A summary.  ", "action_items": ['
+        '{"action": " Recheck BP ", "note_date": "2026-09-20", "due_date": "2026-12-20"}, '
+        '{"action": "Labs", "note_date": "2026-03-01", "due_date": null}, '
+        '{"action": "  ", "note_date": "2026-03-01", "due_date": null}]}'
+    )
     write, responses = openai_writer_with(monkeypatch, answer)
-    assert write("PROMPT") == GeneratedSummary("A summary.", ("Recheck BP",))
+    assert write("PROMPT") == GeneratedSummary(
+        "A summary.",
+        (
+            ActionItem("Recheck BP", date(2026, 9, 20), date(2026, 12, 20)),
+            ActionItem("Labs", date(2026, 3, 1), None),
+        ),
+    )
     [call] = responses.calls
     assert call["model"] == "test-model"
     assert call["input"] == "PROMPT"
@@ -313,6 +387,8 @@ def test_instructions_ask_for_a_combined_summary_and_action_items_only_from_the_
     assert "Lead with the current state" in instructions
     assert "never suggest care the notes don't mention" in instructions
     assert "chronological" not in instructions
+    assert "No dates and no comments in parentheses" in instructions
+    assert "Whether an item is overdue is worked out separately" in instructions
 
 
 @pytest.mark.parametrize(
@@ -323,8 +399,10 @@ def test_instructions_ask_for_a_combined_summary_and_action_items_only_from_the_
         "Not JSON",
         '{"summary": "x"}',
         '{"summary": "  ", "action_items": []}',
+        '{"summary": "x", "action_items": '
+        '[{"action": "Labs", "note_date": "soon", "due_date": null}]}',
     ],
-    ids=["error", "empty", "not-json", "missing-field", "blank-summary"],
+    ids=["error", "empty", "not-json", "missing-field", "blank-summary", "bad-date"],
 )
 def test_openai_writer_failures_become_provider_errors_without_logging_data(
     monkeypatch, caplog, outcome

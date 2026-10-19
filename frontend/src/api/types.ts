@@ -90,6 +90,17 @@ export interface NoteCreate {
   content: string
 }
 
+/** Something a note planned that no later note shows as done. */
+export interface ActionItem {
+  action: string
+  /** The date of the note that planned it. */
+  noted_on: string
+  /** Only when the note gives a date or an interval. */
+  due_on: string | null
+  /** Due before today at the practice. Never set for a deceased patient. */
+  overdue: boolean
+}
+
 /**
  * The narrative covers only the most recent notes: written by a language model from their text,
  * or the built-in timeline of each note's assessment and plan (the opening of free-text notes).
@@ -119,10 +130,10 @@ export interface PatientSummary {
    */
   notes_shortened: number
   /**
-   * Follow-ups the notes planned that no later note shows as done.
+   * Follow-ups the notes planned that no later note shows as done, due soonest first.
    * Only for generated narratives; always empty for the built-in one.
    */
-  action_items: string[]
+  action_items: ActionItem[]
   /** Why the built-in narrative was used when a generated one was wanted; null otherwise. */
   fallback_reason: 'not_configured' | 'provider_error' | null
 }

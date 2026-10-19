@@ -48,8 +48,13 @@ Return two things:
 - action_items: things someone still needs to do or check: a planned test, referral, or
   follow-up visit, or a result that is pending, that no later note shows as done. Not ongoing
   medications, treatments already given, or advice to the patient such as return precautions.
-  Write each as one short line saying when it was planned, for example
-  "Repeat BMP: planned Nov 19, 2025, for 6 months later". Use an empty list if there are none.
+  Use an empty list if there are none. Each item has:
+  - action: a few words naming it, such as "Repeat BMP" or "Sleep medicine follow-up".
+    No dates and no comments in parentheses.
+  - note_date: the date of the note that planned it, as YYYY-MM-DD.
+  - due_date: when it is due, as YYYY-MM-DD, only if that note gives a date or an interval
+    (for "repeat in 6 months" in a note dated 2025-11-19, use 2026-05-19). Otherwise null;
+    don't guess. Whether an item is overdue is worked out separately, so don't say.
 
 Rules:
 - Use only the information in the notes and profile below. Do not add diagnoses, causes,
@@ -75,7 +80,19 @@ OUTPUT_FORMAT = {
         "type": "object",
         "properties": {
             "summary": {"type": "string"},
-            "action_items": {"type": "array", "items": {"type": "string"}},
+            "action_items": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "action": {"type": "string"},
+                        "note_date": {"type": "string", "format": "date"},
+                        "due_date": {"type": ["string", "null"], "format": "date"},
+                    },
+                    "required": ["action", "note_date", "due_date"],
+                    "additionalProperties": False,
+                },
+            },
         },
         "required": ["summary", "action_items"],
         "additionalProperties": False,
@@ -83,18 +100,32 @@ OUTPUT_FORMAT = {
 }
 
 
+class ActionItem(NamedTuple):
+    action: str
+    # The date of the note that planned it.
+    noted_on: date
+    # Only when the note gives a date or an interval.
+    due_on: date | None
+
+
 class GeneratedSummary(NamedTuple):
     summary: str
-    action_items: tuple[str, ...]
+    action_items: tuple[ActionItem, ...]
 
 
 # Takes the prompt and returns the generated summary. Tests replace it with a fake.
 NarrativeWriter = Callable[[str], GeneratedSummary]
 
 
+class _ModelActionItem(BaseModel):
+    action: str
+    note_date: date
+    due_date: date | None
+
+
 class _ModelOutput(BaseModel):
     summary: str
-    action_items: list[str]
+    action_items: list[_ModelActionItem]
 
 
 class ProviderError(Exception):
@@ -175,10 +206,26 @@ def _openai_writer(api_key: str, model: str) -> NarrativeWriter:
         if not summary:
             logger.warning("Summary provider returned no text")
             raise ProviderError
-        items = tuple(item.strip() for item in output.action_items if item.strip())
+        items = tuple(
+            ActionItem(item.action.strip(), item.note_date, item.due_date)
+            for item in output.action_items
+            if item.action.strip()
+        )
         return GeneratedSummary(summary, items)
 
     return write
+
+
+def check_action_items(items: Sequence[ActionItem], note_dates: set[date]) -> None:
+    """Raise ProviderError unless every item points at one of the notes it was given.
+
+    An item dated to no note, or due before it was planned, means the model misread the notes,
+    so the whole answer is distrusted and the built-in summary is shown instead.
+    """
+    for item in items:
+        if item.noted_on not in note_dates or (item.due_on and item.due_on < item.noted_on):
+            logger.warning("Summary provider returned an action item that matches no note")
+            raise ProviderError
 
 
 def get_narrative_writer() -> NarrativeWriter | None:

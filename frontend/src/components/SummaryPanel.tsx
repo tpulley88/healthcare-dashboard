@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 
 import { getSummary } from '../api/notes'
 import type { PatientSummary } from '../api/types'
-import { summaryCoverage } from '../format'
+import { actionItemTiming, summaryCoverage } from '../format'
 import { ErrorMessage } from './ErrorMessage'
 
 const FALLBACK_REASONS: Record<NonNullable<PatientSummary['fallback_reason']>, string> = {
@@ -89,7 +89,11 @@ function Generated({ summary }: { summary: PatientSummary }) {
       {summary.action_items.length > 0 ? (
         <ul className="action-items">
           {summary.action_items.map((item, index) => (
-            <li key={index}>{item}</li>
+            <li key={index}>
+              <span className="action-item-name">{item.action}</span>
+              {item.overdue && <span className="overdue">Overdue</span>}
+              <span className="action-item-timing">{actionItemTiming(item)}</span>
+            </li>
           ))}
         </ul>
       ) : (

@@ -19,13 +19,14 @@ from app.generated_summary import (
     NarrativeWriter,
     ProviderError,
     build_prompt,
+    check_action_items,
     get_narrative_writer,
     is_shortened,
     remembered_narrative,
 )
-from app.models import Note, Patient
+from app.models import Note, Patient, PatientStatus
 from app.queries import live_notes
-from app.schemas import NoteCreate, NoteRead, PatientSummary
+from app.schemas import ActionItemRead, NoteCreate, NoteRead, PatientSummary
 from app.summary import RECENT_NOTE_LIMIT, build_summary
 
 # "auto" uses a generated narrative when one is available; "template" always uses the built-in.
@@ -91,7 +92,10 @@ def get_summary(
     With `source=auto` (the default) and an OpenAI API key configured, a language model writes
     the narrative from the note text (`source` "llm"): a short summary of where things stand,
     combining the notes rather than recounting each visit. `action_items` lists follow-ups the
-    notes planned that no later note shows as done; the model may not add its own.
+    notes planned that no later note shows as done; the model may not add its own. Each has the
+    date of the note that planned it and, when the note gives one, a due date; `overdue` is
+    worked out here from today's date, not by the model, and is never set for a deceased
+    patient. Items due soonest come first, then those with no due date.
     Each note is sent up to its first 4,000 characters; `notes_shortened` counts the notes that
     were cut, so anything after that point, such as a long note's Assessment and Plan, may be
     missing from the narrative.
@@ -114,13 +118,28 @@ def get_summary(
         return summary.model_copy(update={"fallback_reason": "not_configured"})
     try:
         generated = remembered_narrative(build_prompt(patient, notes, total, today, tz), write)
+        check_action_items(generated.action_items, {clock.practice_date(n.taken_at) for n in notes})
     except ProviderError:
         return summary.model_copy(update={"fallback_reason": "provider_error"})
     shortened = sum(is_shortened(note) for note in notes)
+    items = sorted(
+        generated.action_items, key=lambda item: (item.due_on is None, item.due_on or item.noted_on)
+    )
     return summary.model_copy(
         update={
             "narrative": generated.summary,
-            "action_items": list(generated.action_items),
+            "action_items": [
+                ActionItemRead(
+                    action=item.action,
+                    noted_on=item.noted_on,
+                    due_on=item.due_on,
+                    # Nothing is overdue for a patient who has died.
+                    overdue=patient.status is not PatientStatus.DECEASED
+                    and item.due_on is not None
+                    and item.due_on < today,
+                )
+                for item in items
+            ],
             "source": "llm",
             "notes_shortened": shortened,
         }

@@ -42,7 +42,10 @@ test.describe('patient summary', () => {
     await answerSummary(page, {
       source: 'llm',
       narrative: 'Started lisinopril in March.\nHome readings improved by September.',
-      action_items: ['Repeat BMP: planned Mar 1, 2026, for 6 months later'],
+      action_items: [
+        { action: 'Repeat BMP', noted_on: '2026-03-01', due_on: '2026-09-01', overdue: true },
+        { action: 'Screening labs', noted_on: '2026-09-20', due_on: null, overdue: false },
+      ],
     })
     await page.goto(`/patients/${patientId}`)
 
@@ -64,9 +67,14 @@ test.describe('patient summary', () => {
     await expect(
       summary.getByRole('heading', { name: 'Action items from the notes' }),
     ).toBeVisible()
-    await expect(summary.getByRole('listitem')).toHaveText([
-      'Repeat BMP: planned Mar 1, 2026, for 6 months later',
-    ])
+    // Each item says when it's due (or that no date was given) and which note it came from.
+    const items = summary.getByRole('listitem')
+    await expect(items).toHaveCount(2)
+    await expect(items.nth(0)).toContainText('Repeat BMP')
+    await expect(items.nth(0)).toContainText('Due Sep 1, 2026 · from the Mar 1, 2026 note')
+    await expect(items.nth(0).getByText('Overdue', { exact: true })).toBeVisible()
+    await expect(items.nth(1)).toContainText('No due date given · from the Sep 20, 2026 note')
+    await expect(items.nth(1)).not.toContainText('Overdue')
     await expect(summary).not.toContainText('Built-in summary')
     await expect(summary).not.toContainText('too long to use in full')
   })

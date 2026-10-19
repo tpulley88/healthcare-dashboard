@@ -952,6 +952,30 @@ a.button {
 }
 
 .action-items {
+  display: grid;
+  gap: 0.4rem;
   margin: 0;
   padding-left: 1.25rem;
+}
+
+.action-item-name {
+  font-weight: 500;
+}
+
+/* The word says it; the color only draws the eye. */
+.overdue {
+  margin-left: 0.5rem;
+  padding: 0 0.4rem;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
+  background: var(--danger-bg);
+  color: var(--danger);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.action-item-timing {
+  display: block;
+  color: var(--muted);
+  font-size: 0.85rem;
 }

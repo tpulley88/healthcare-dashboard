@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  actionItemTiming,
   conditionsPreview,
   formatDate,
   formatDateTime,
@@ -73,6 +74,17 @@ describe('summaryCoverage', () => {
     expect(
       summaryCoverage({ notes_included: 0, notes_total: 0, notes_from: null, notes_to: null }),
     ).toEqual({ scope: 'No notes yet', span: null })
+  })
+})
+
+describe('actionItemTiming', () => {
+  it('gives the due date when the note had one, and always the note it came from', () => {
+    expect(actionItemTiming({ noted_on: '2024-12-09', due_on: '2025-12-09' })).toBe(
+      'Due Dec 9, 2025 · from the Dec 9, 2024 note',
+    )
+    expect(actionItemTiming({ noted_on: '2025-11-23', due_on: null })).toBe(
+      'No due date given · from the Nov 23, 2025 note',
+    )
   })
 })
 

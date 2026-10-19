@@ -180,8 +180,12 @@ The seeded notes are written in SOAP format (Subjective, Objective, Assessment, 
 - **Generated summary (when `OPENAI_API_KEY` is set):** a model writes a short summary of where
   things stand, combining the notes rather than recounting each visit, plus **action items**:
   tests, referrals or follow-ups a note planned that no later note shows as done. It may not
-  suggest care of its own. The model answers in a fixed JSON shape, so action items arrive as a
-  list. Identifiers, allergies and conditions always come from the database, so the model can't
+  suggest care of its own. The model answers in a fixed JSON shape: each action item names the
+  note it came from and, if that note gave a date or an interval, when it's due. The server,
+  not the model, compares the due date with today and marks the item **overdue** (never for a
+  deceased patient), and lists items due soonest first. An item that matches none of the notes'
+  dates, or is due before it was planned, means the model misread the notes, so the built-in
+  summary is shown instead. Identifiers, allergies and conditions always come from the database, so the model can't
   change them. It is labeled as generated, and a spinner shows while it's prepared or updated
   after a new note.
   - **Sent to the provider:** status, age, conditions, allergies, and the dated text of the
@@ -247,8 +251,8 @@ What this demo would need before real patients:
 ## Stretch goals
 
 - **Advanced backend:** sorting and filtering query parameters; Alembic migrations.
-- **Testing:** pytest API tests (185); Vitest unit tests for the API client, formatting, list
-  URL parameters and form logic (45); Playwright end-to-end tests for the main journeys (23):
+- **Testing:** pytest API tests (190); Vitest unit tests for the API client, formatting, list
+  URL parameters and form logic (46); Playwright end-to-end tests for the main journeys (23):
   create, chart a note, edit and delete a patient; search, filter, sort and paging, with Back
   and reload keeping the view; note validation messages and deleting a note; edit conflicts
   between two tabs; edits, notes, the summary and the dashboard staying on screen when a

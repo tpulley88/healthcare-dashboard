@@ -259,12 +259,26 @@ class NoteRead(BaseModel):
     created_at: datetime
 
 
+class ActionItemRead(BaseModel):
+    """Something a note planned that no later note shows as done.
+
+    `noted_on` is the date of the note that planned it. `due_on` is set only when that note
+    gives a date or an interval. `overdue` means `due_on` is before today at the practice;
+    it is never set for a deceased patient.
+    """
+
+    action: str
+    noted_on: date
+    due_on: date | None
+    overdue: bool
+
+
 class PatientSummary(BaseModel):
     """A readable summary of a patient's profile and recent notes.
 
     The profile fields are always present, even when the patient has no notes.
     The narrative covers only the most recent notes, so it isn't a complete clinical history.
-    It has one line per note, oldest first, separated by line breaks.
+    The built-in narrative has one line per note, newest first, separated by line breaks.
     `notes_included`, `notes_total`, `notes_from`, and `notes_to` say what it covers;
     show them alongside the narrative. The dates are calendar dates at the practice.
     `source` says who wrote the narrative: "llm" for a generated one, "template" for the
@@ -296,5 +310,5 @@ class PatientSummary(BaseModel):
     notes_to: date | None
     source: Literal["template", "llm"] = "template"
     notes_shortened: int = 0
-    action_items: list[str] = []
+    action_items: list[ActionItemRead] = []
     fallback_reason: Literal["not_configured", "provider_error"] | None = None

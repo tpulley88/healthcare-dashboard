@@ -1,4 +1,4 @@
-import type { Patient, PatientStatus, PatientSummary } from './api/types'
+import type { ActionItem, Patient, PatientStatus, PatientSummary } from './api/types'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
@@ -83,6 +83,14 @@ export function summaryCoverage(
     scope: `Not a complete clinical history · Summary of ${count}`,
     span: from === to ? formatDate(from) : `${formatDate(from)} – ${formatDate(to)}`,
   }
+}
+
+/** When an action item is due, and which note it came from. */
+export function actionItemTiming(item: Pick<ActionItem, 'noted_on' | 'due_on'>): string {
+  const source = `from the ${formatDate(item.noted_on)} note`
+  return item.due_on
+    ? `Due ${formatDate(item.due_on)} · ${source}`
+    : `No due date given · ${source}`
 }
 
 /**
