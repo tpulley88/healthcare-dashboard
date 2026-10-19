@@ -202,7 +202,14 @@ function PatientTable({
                   {`${patient.last_name}, ${patient.first_name}`}
                 </Link>
               </td>
-              <td>{patient.age}</td>
+              {/* No date of death is stored, so a deceased patient's age would keep counting. */}
+              {patient.status === 'deceased' ? (
+                <td className="muted" title="No age shown: date of death isn't recorded">
+                  —
+                </td>
+              ) : (
+                <td>{patient.age}</td>
+              )}
               <td className="secondary-column">{formatDate(patient.date_of_birth)}</td>
               <td>
                 <StatusBadge status={patient.status} />

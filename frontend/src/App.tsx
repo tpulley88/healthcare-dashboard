@@ -1,4 +1,6 @@
-import { Link, NavLink, Route, Routes } from 'react-router'
+import { Link, NavLink, Route, Routes, useLocation } from 'react-router'
+
+import { ErrorBoundary } from './components/ErrorBoundary'
 
 import { DashboardPage } from './pages/DashboardPage'
 import { EditPatientPage } from './pages/EditPatientPage'
@@ -7,6 +9,7 @@ import { PatientDetailPage } from './pages/PatientDetailPage'
 import { PatientListPage } from './pages/PatientListPage'
 
 export default function App() {
+  const location = useLocation()
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -34,14 +37,16 @@ export default function App() {
         </ul>
       </nav>
       <main className="app-main">
-        <Routes>
-          <Route path="/" element={<DashboardPage />} />
-          <Route path="/patients" element={<PatientListPage />} />
-          <Route path="/patients/new" element={<NewPatientPage />} />
-          <Route path="/patients/:patientId" element={<PatientDetailPage />} />
-          <Route path="/patients/:patientId/edit" element={<EditPatientPage />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <ErrorBoundary key={location.pathname}>
+          <Routes>
+            <Route path="/" element={<DashboardPage />} />
+            <Route path="/patients" element={<PatientListPage />} />
+            <Route path="/patients/new" element={<NewPatientPage />} />
+            <Route path="/patients/:patientId" element={<PatientDetailPage />} />
+            <Route path="/patients/:patientId/edit" element={<EditPatientPage />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </ErrorBoundary>
       </main>
     </div>
   )

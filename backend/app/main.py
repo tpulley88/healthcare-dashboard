@@ -8,7 +8,8 @@ import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
+from fastapi.responses import JSONResponse
 
 # Importing the engine also loads the settings, so missing configuration stops startup.
 from app.db import engine
@@ -28,6 +29,26 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 logging.getLogger("uvicorn.access").addFilter(DropQueryString())
 
 app = FastAPI(title="Healthcare Dashboard API", lifespan=lifespan)
+
+logger = logging.getLogger(__name__)
+
+
+@app.middleware("http")
+async def hide_unexpected_errors(request: Request, call_next) -> Response:
+    """Answer an unexpected error with a plain 500, logging only the kind of error.
+
+    A database error's message can quote the row being saved ("Failing row contains ..."),
+    which is patient data. Without this, the server would log the full message and traceback.
+    """
+    try:
+        return await call_next(request)
+    except Exception as error:
+        logger.error(
+            "Unhandled error on %s %s: %s", request.method, request.url.path, type(error).__name__
+        )
+        return JSONResponse({"detail": "Internal server error"}, status_code=500)
+
+
 app.include_router(patients.router)
 app.include_router(notes.router)
 

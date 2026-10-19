@@ -14,7 +14,9 @@ from app.config import settings
 
 # Test each pooled connection before use.
 # Connections broken by a Postgres restart are replaced instead of failing a request.
-engine = create_engine(str(settings.database_url), pool_pre_ping=True)
+# hide_parameters keeps submitted values out of error messages. Postgres's own error detail
+# can still include a failing row, so main.py never logs error messages at all.
+engine = create_engine(str(settings.database_url), pool_pre_ping=True, hide_parameters=True)
 
 # Keep loaded values readable after a commit, so a route can save an object and return it.
 # Relationships that were never loaded still can't be read once the session is closed.

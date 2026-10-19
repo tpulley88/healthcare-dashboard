@@ -101,3 +101,19 @@ test('paging moves through the list, and Back returns to the previous page', asy
   await expect(pages).toContainText(/Showing 1–20 of/)
   await expect(rowNames(page).first()).toHaveText(firstOnPageOne ?? '')
 })
+
+test('a deceased patient shows no age, because no date of death is recorded', async ({
+  page,
+  request,
+}) => {
+  const lastName = uniqueLastName()
+  const patient = await createPatient(request, { last_name: lastName, status: 'deceased' })
+  try {
+    await page.goto(`/patients?search=${lastName}`)
+    const row = page.locator('tbody tr')
+    await expect(row).toHaveCount(1)
+    await expect(row.locator('td').nth(1)).toHaveText('—')
+  } finally {
+    await deletePatient(request, patient.id)
+  }
+})

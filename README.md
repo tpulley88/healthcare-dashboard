@@ -158,7 +158,9 @@ the server's UTC.
   of birth, conditions and phone are in the chart), and the table scrolls inside its own box.
   A browser test checks every main page at 320px for sideways scrolling.
 - **No patient data in logs.** The API and nginx access logs drop query strings, so name
-  searches aren't recorded. Generated-summary failures log only the error type.
+  searches aren't recorded. Unexpected errors return a plain 500 and log only the error type,
+  because a database error can quote the row being saved. Postgres runs with terse error logs
+  for the same reason, and generated-summary failures log only the error type.
 - **Last visit is its own field**, not "date of the latest note": a phone note or a lab result
   isn't a visit.
 
@@ -218,7 +220,7 @@ What this demo would need before real patients:
 
 - **No authentication or authorization**, and no unsaved-changes warning when leaving a form.
 - **US-only formats** for phone, state and ZIP.
-- **Deceased patients:** there's no date-of-death field, so age keeps counting.
+- **Deceased patients:** there's no date-of-death field, so no age is shown for them.
 - **`PUT` is a partial update** (PATCH semantics), to match the specified API. `If-Match` is an
   exact match on one ETag (no `*` or lists). `DELETE` doesn't take `If-Match`; a delete racing a
   save is still refused with 412.
@@ -230,19 +232,23 @@ What this demo would need before real patients:
 - **nginx error log** may include a request's query string, which can contain a name search.
 - **Unknown frontend URLs** return HTTP 200 with the app's 404 page (SPA fallback); the API
   returns real 404s.
+- **API responses aren't validated at runtime in the browser.** The frontend and API ship
+  together; a page that gets an unexpected shape shows an error message instead of breaking the
+  app. Schemas generated from the OpenAPI spec would be the next step if they were deployed
+  separately.
 - **The summary cache** is per process: lost on restart and not shared between workers.
 - **Browser tests** soft-delete the patients they create, so those rows stay in the database.
 
 ## Stretch goals
 
 - **Advanced backend:** sorting and filtering query parameters; Alembic migrations.
-- **Testing:** pytest API tests (179); Vitest unit tests for the API client, formatting, list
-  URL parameters and form logic (45); Playwright end-to-end tests for the main journeys (20):
+- **Testing:** pytest API tests (181); Vitest unit tests for the API client, formatting, list
+  URL parameters and form logic (45); Playwright end-to-end tests for the main journeys (22):
   create, chart a note, edit and delete a patient; search, filter, sort and paging, with Back
   and reload keeping the view; note validation messages and deleting a note; edit conflicts
   between two tabs; edits, notes, the summary and the dashboard staying on screen when a
   background refresh fails; the summary; navigation, a deleted patient, 404 and a
-  phone-sized screen.
+  phone-sized screen; a page that fails to render; a deceased patient's age.
 - **Language-model summary** with a built-in fallback (the summary hint in Part 3).
 
 ## Project layout

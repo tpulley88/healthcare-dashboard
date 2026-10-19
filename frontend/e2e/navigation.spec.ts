@@ -41,6 +41,26 @@ test('a failed background refresh keeps the dashboard on screen', async ({ page 
   await expect(recent.getByRole('listitem').first()).toBeVisible()
 })
 
+test('a page that fails to render shows a message, and the rest of the app still works', async ({
+  page,
+}) => {
+  // A response in a shape the page doesn't expect makes it throw while rendering.
+  await page.route('**/api/patients?**', (route) =>
+    route.fulfill({ json: { items: null, total: 3, page: 1, page_size: 20 } }),
+  )
+  await page.goto('/patients')
+  await expect(page.getByRole('alert')).toContainText('This page couldn’t be shown')
+  await expect(page.getByRole('button', { name: 'Reload' })).toBeVisible()
+
+  await page.unroute('**/api/patients?**')
+  await page
+    .getByRole('navigation', { name: 'Main' })
+    .getByRole('link', { name: 'Dashboard' })
+    .click()
+  await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible()
+  await expect(page.getByRole('alert')).toHaveCount(0)
+})
+
 test('the header offers a new patient from any page', async ({ page }) => {
   await page.goto('/patients')
   await page.getByRole('link', { name: 'New patient' }).click()
