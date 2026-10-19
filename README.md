@@ -168,8 +168,9 @@ the server's UTC.
 
 `GET /patients/{id}/summary` returns the name, age, blood type, status, conditions and
 allergies from the database, plus a narrative built from the 10 most recent notes. It says how
-many notes it covers out of the total, and their date range. The chart shows it above the full
-notes.
+many notes it covers out of the total, and their date range. The chart shows the coverage and
+narrative above the full notes; it leaves out the profile fields, which the chart header and
+profile card already show.
 
 The seeded notes are written in SOAP format (Subjective, Objective, Assessment, Plan).
 

@@ -66,21 +66,23 @@ export function withLocalOffset(localValue: string): string {
 }
 
 /**
- * What the summary covers, shown once above it:
- * "Recent-note summary of the latest 10 of 14 notes · Jun 16, 2025 – Mar 9, 2026 ·
- * Not a complete clinical history".
+ * What the summary covers, shown above it on two lines:
+ * "Not a complete clinical history · Summary of the latest 10 of 14 notes" and
+ * "Jun 16, 2025 – Mar 9, 2026". With no notes there's no date range.
  */
-export function coverageLabel(
+export function summaryCoverage(
   summary: Pick<PatientSummary, 'notes_included' | 'notes_total' | 'notes_from' | 'notes_to'>,
-): string {
+): { scope: string; span: string | null } {
   const { notes_included: included, notes_total: total, notes_from: from, notes_to: to } = summary
-  if (total === 0 || !from || !to) return 'No notes yet'
+  if (total === 0 || !from || !to) return { scope: 'No notes yet', span: null }
   const count =
     included === total
       ? `${total} ${total === 1 ? 'note' : 'notes'}`
       : `the latest ${included} of ${total} notes`
-  const span = from === to ? formatDate(from) : `${formatDate(from)} – ${formatDate(to)}`
-  return `Recent-note summary of ${count} · ${span} · Not a complete clinical history`
+  return {
+    scope: `Not a complete clinical history · Summary of ${count}`,
+    span: from === to ? formatDate(from) : `${formatDate(from)} – ${formatDate(to)}`,
+  }
 }
 
 /**

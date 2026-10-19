@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest'
 
 import {
   conditionsPreview,
-  coverageLabel,
   formatDate,
   formatDateTime,
   localDateTimeNow,
+  summaryCoverage,
   withLocalOffset,
 } from './format'
 
@@ -46,33 +46,33 @@ describe('localDateTimeNow', () => {
   })
 })
 
-describe('coverageLabel', () => {
-  it('says how many notes the summary covers, over which dates', () => {
+describe('summaryCoverage', () => {
+  it('says how many notes the summary covers, then over which dates', () => {
     expect(
-      coverageLabel({
+      summaryCoverage({
         notes_included: 10,
         notes_total: 14,
         notes_from: '2025-06-16',
         notes_to: '2026-03-09',
       }),
-    ).toBe(
-      'Recent-note summary of the latest 10 of 14 notes · Jun 16, 2025 – Mar 9, 2026 · ' +
-        'Not a complete clinical history',
-    )
+    ).toEqual({
+      scope: 'Not a complete clinical history · Summary of the latest 10 of 14 notes',
+      span: 'Jun 16, 2025 – Mar 9, 2026',
+    })
     expect(
-      coverageLabel({
+      summaryCoverage({
         notes_included: 1,
         notes_total: 1,
         notes_from: '2026-03-09',
         notes_to: '2026-03-09',
       }),
-    ).toBe('Recent-note summary of 1 note · Mar 9, 2026 · Not a complete clinical history')
+    ).toEqual({ scope: 'Not a complete clinical history · Summary of 1 note', span: 'Mar 9, 2026' })
   })
 
   it('says when there are no notes', () => {
     expect(
-      coverageLabel({ notes_included: 0, notes_total: 0, notes_from: null, notes_to: null }),
-    ).toBe('No notes yet')
+      summaryCoverage({ notes_included: 0, notes_total: 0, notes_from: null, notes_to: null }),
+    ).toEqual({ scope: 'No notes yet', span: null })
   })
 })
 

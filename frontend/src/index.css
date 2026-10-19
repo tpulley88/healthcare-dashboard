@@ -449,30 +449,40 @@ textarea {
   border-color: var(--border);
 }
 
-.coverage {
-  display: inline-block;
-  padding: 0.25rem 0.6rem;
+/* What the summary covers and where it came from, in one box above the clinical picture. */
+.summary-body {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.summary-body p {
+  margin: 0;
+}
+
+.summary-about {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.5rem 0.75rem;
+  border-left: 3px solid var(--accent);
   border-radius: var(--radius);
   background: var(--info-bg);
-  color: var(--accent);
   font-size: 0.85rem;
-  font-weight: 500;
+}
+
+.summary-scope {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.summary-about .summary-source {
+  margin-top: 0.25rem;
 }
 
 .timeline {
-  margin: 0 0 0.75rem;
+  margin: 0;
   padding-left: 1.1rem;
   display: grid;
   gap: 0.4rem;
-}
-
-.generated {
-  display: grid;
-  gap: 0.6rem;
-}
-
-.generated p {
-  margin: 0;
 }
 
 .source-label {
@@ -485,10 +495,6 @@ textarea {
 .source-label-fallback {
   border-left-color: #e0b252;
   background: #fff8e6;
-}
-
-.summary-headline {
-  font-weight: 600;
 }
 
 .small {
@@ -941,11 +947,11 @@ a.button {
 }
 
 .action-items-heading {
-  margin: 1rem 0 0.25rem;
+  margin: 0.5rem 0 -0.25rem;
   font-size: 1rem;
 }
 
 .action-items {
-  margin: 0 0 0.75rem;
+  margin: 0;
   padding-left: 1.25rem;
 }
