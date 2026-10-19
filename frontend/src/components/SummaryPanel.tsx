@@ -18,24 +18,24 @@ const FALLBACK_REASONS: Record<NonNullable<PatientSummary['fallback_reason']>, s
  * The full notes stay on the same page, one link away.
  */
 export function SummaryPanel({ patientId }: { patientId: string }) {
-  const { data, error, isPending, refetch } = useQuery({
+  const { data, error, isPending, isFetching, refetch } = useQuery({
     queryKey: ['patient', patientId, 'summary'],
     queryFn: () => getSummary(patientId),
   })
 
   return (
-    <section className="card" aria-labelledby="summary-heading" aria-busy={isPending}>
+    <section className="card" aria-labelledby="summary-heading" aria-busy={isFetching}>
       <h2 id="summary-heading">Summary</h2>
       {isPending ? (
-        <p className="muted">
-          Preparing summary… The first one for new notes can take a few seconds.
-        </p>
+        <Working>Preparing summary… The first one for new notes can take 10–20 seconds.</Working>
       ) : !data ? (
         <ErrorMessage error={error} onRetry={() => refetch()} />
       ) : (
         <>
           {/* A failed background refresh keeps the summary being read on screen. */}
           {error && <ErrorMessage error={error} onRetry={() => refetch()} />}
+          {/* After a note is added, the old summary stays until the new one is ready. */}
+          {isFetching && <Working>Updating summary for the latest notes…</Working>}
           <p className="coverage">{coverageLabel(data)}</p>
           <p className="summary-headline">{data.headline}</p>
           {data.source === 'llm' ? <Generated summary={data} /> : <BuiltIn summary={data} />}
@@ -69,7 +69,30 @@ function Generated({ summary }: { summary: PatientSummary }) {
       {summary.narrative.split(/\n+/).map((paragraph, index) => (
         <p key={index}>{paragraph}</p>
       ))}
+      <h3 className="action-items-heading">Action items from the notes</h3>
+      {summary.action_items.length > 0 ? (
+        <ul className="action-items">
+          {summary.action_items.map((item, index) => (
+            <li key={index}>{item}</li>
+          ))}
+        </ul>
+      ) : (
+        <p className="muted">None found in these notes.</p>
+      )}
     </div>
+  )
+}
+
+/**
+ * A spinner with a message. There's no progress bar because the server can't report how far
+ * along a summary is; a bar would only be a guess.
+ */
+function Working({ children }: { children: string }) {
+  return (
+    <p className="working muted" role="status">
+      <span className="spinner" aria-hidden="true" />
+      {children}
+    </p>
   )
 }
 

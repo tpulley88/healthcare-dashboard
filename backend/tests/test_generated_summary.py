@@ -10,6 +10,7 @@ import pytest
 from app import generated_summary
 from app.generated_summary import (
     NOTE_CHARACTER_LIMIT,
+    GeneratedSummary,
     ProviderError,
     build_prompt,
     get_narrative_writer,
@@ -108,17 +109,18 @@ def test_prompt_for_deceased_patient_has_no_age():
 
 
 class FakeWriter:
-    """Stands in for the provider. Records each prompt and returns a fixed narrative."""
+    """Stands in for the provider. Records each prompt and returns a fixed summary."""
 
-    def __init__(self, result: str | Exception = "Generated narrative."):
+    def __init__(self, result: str | Exception = "Generated narrative.", action_items=()):
         self.result = result
+        self.action_items = tuple(action_items)
         self.prompts: list[str] = []
 
-    def __call__(self, prompt: str) -> str:
+    def __call__(self, prompt: str) -> GeneratedSummary:
         self.prompts.append(prompt)
         if isinstance(self.result, Exception):
             raise self.result
-        return self.result
+        return GeneratedSummary(self.result, self.action_items)
 
 
 @pytest.fixture
@@ -152,14 +154,21 @@ def summary_url(patient_id, **params):
 def test_summary_is_generated_when_available_with_facts_from_database(
     client, use_writer, patient_with_notes
 ):
-    writer = use_writer(FakeWriter("Started lisinopril in March; BP improved by September."))
+    writer = use_writer(
+        FakeWriter(
+            "Started lisinopril in March; BP improved by September.",
+            action_items=["Recheck BP in 3 months (planned Sep 20, 2026)"],
+        )
+    )
     body = client.get(summary_url(patient_with_notes["id"])).json()
 
     assert body["source"] == "llm"
     assert body["fallback_reason"] is None
     assert body["narrative"] == "Started lisinopril in March; BP improved by September."
+    assert body["action_items"] == ["Recheck BP in 3 months (planned Sep 20, 2026)"]
     built_in = client.get(summary_url(patient_with_notes["id"], source="template")).json()
-    # Everything except the narrative and source matches the built-in summary.
+    assert built_in["action_items"] == []
+    # Everything except the narrative, action items and source matches the built-in summary.
     for field in ["headline", "allergies", "conditions", "notes_included", "notes_total"]:
         assert body[field] == built_in[field]
     assert body["notes_from"] == "2026-03-01"
@@ -228,7 +237,8 @@ def test_falls_back_to_built_in_when_provider_fails(client, use_writer, patient_
     assert response.status_code == 200
     assert response.json()["source"] == "template"
     assert response.json()["fallback_reason"] == "provider_error"
-    assert response.json()["narrative"].startswith("Mar 1, 2026: ")
+    assert response.json()["narrative"].startswith("Sep 20, 2026 (most recent")
+    assert response.json()["action_items"] == []
 
 
 def test_generated_narrative_is_reused_until_notes_change(client, use_writer, patient_with_notes):
@@ -286,17 +296,35 @@ def openai_writer_with(monkeypatch, outcome):
 
 
 def test_openai_writer_sends_instructions_and_asks_not_to_store(monkeypatch):
-    write, responses = openai_writer_with(monkeypatch, "  A narrative.  ")
-    assert write("PROMPT") == "A narrative."
+    answer = '{"summary": "  A summary.  ", "action_items": [" Recheck BP ", "  "]}'
+    write, responses = openai_writer_with(monkeypatch, answer)
+    assert write("PROMPT") == GeneratedSummary("A summary.", ("Recheck BP",))
     [call] = responses.calls
     assert call["model"] == "test-model"
     assert call["input"] == "PROMPT"
     assert call["instructions"] == generated_summary.INSTRUCTIONS
+    assert call["text"] == {"format": generated_summary.OUTPUT_FORMAT}
     assert call["store"] is False
 
 
+def test_instructions_ask_for_a_combined_summary_and_action_items_only_from_the_notes():
+    instructions = generated_summary.INSTRUCTIONS
+    assert "do not recount the visits one by one" in instructions
+    assert "Lead with the current state" in instructions
+    assert "never suggest care the notes don't mention" in instructions
+    assert "chronological" not in instructions
+
+
 @pytest.mark.parametrize(
-    "outcome", [openai.APIConnectionError(request=None), "   "], ids=["error", "empty"]
+    "outcome",
+    [
+        openai.APIConnectionError(request=None),
+        "   ",
+        "Not JSON",
+        '{"summary": "x"}',
+        '{"summary": "  ", "action_items": []}',
+    ],
+    ids=["error", "empty", "not-json", "missing-field", "blank-summary"],
 )
 def test_openai_writer_failures_become_provider_errors_without_logging_data(
     monkeypatch, caplog, outcome

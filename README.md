@@ -173,12 +173,16 @@ notes.
 
 The seeded notes are written in SOAP format (Subjective, Objective, Assessment, Plan).
 
-- **Built-in narrative (always available):** one dated line per note, taken from the note's
-  Assessment and Plan, or its opening sentence if the note isn't in SOAP format. It is a
-  structured excerpt, not a synthesis, and can leave out details.
-- **Generated narrative (when `OPENAI_API_KEY` is set):** a model writes one or two paragraphs
-  from the note text. Only the narrative is generated; identifiers, allergies and conditions
-  always come from the database, so the model can't change them. It is labeled as generated.
+- **Built-in narrative (always available):** one dated line per note, newest first like the
+  notes list, taken from the note's Assessment and Plan, or its opening sentence if the note
+  isn't in SOAP format. It is a structured excerpt, not a synthesis, and can leave out details.
+- **Generated summary (when `OPENAI_API_KEY` is set):** a model writes a short summary of where
+  things stand, combining the notes rather than recounting each visit, plus **action items**:
+  tests, referrals or follow-ups a note planned that no later note shows as done. It may not
+  suggest care of its own. The model answers in a fixed JSON shape, so action items arrive as a
+  list. Identifiers, allergies and conditions always come from the database, so the model can't
+  change them. It is labeled as generated, and a spinner shows while it's prepared or updated
+  after a new note.
   - **Sent to the provider:** status, age, conditions, allergies, and the dated text of the
     recent notes. **Not sent:** name, date of birth, contact details, address, ids. Note text
     itself may still contain identifiers. Requests use `store=False`.
@@ -242,12 +246,12 @@ What this demo would need before real patients:
 ## Stretch goals
 
 - **Advanced backend:** sorting and filtering query parameters; Alembic migrations.
-- **Testing:** pytest API tests (181); Vitest unit tests for the API client, formatting, list
-  URL parameters and form logic (45); Playwright end-to-end tests for the main journeys (22):
+- **Testing:** pytest API tests (185); Vitest unit tests for the API client, formatting, list
+  URL parameters and form logic (45); Playwright end-to-end tests for the main journeys (23):
   create, chart a note, edit and delete a patient; search, filter, sort and paging, with Back
   and reload keeping the view; note validation messages and deleting a note; edit conflicts
   between two tabs; edits, notes, the summary and the dashboard staying on screen when a
-  background refresh fails; the summary; navigation, a deleted patient, 404 and a
+  background refresh fails; the summary, its action items and loading spinner; navigation, a deleted patient, 404 and a
   phone-sized screen; a page that fails to render; a deceased patient's age.
 - **Language-model summary** with a built-in fallback (the summary hint in Part 3).
 

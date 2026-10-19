@@ -93,13 +93,13 @@ def test_timeline_transitions():
         make_note("2026-09-20T15:00:00+00:00", "Last."),
     ]
     assert summarize(notes=notes).narrative.split("\n") == [
+        "Sep 20, 2026 (most recent, 2 weeks after the previous note): Last.",
+        "Sep 1, 2026 (2 years after the previous note): Years.",
+        "Jul 8, 2024 (5 months after the previous note): Months.",
+        "Feb 8, 2024 (4 weeks after the previous note): Weeks.",
+        "Jan 11, 2024 (1 day after the previous note): Next day.",
+        "Jan 10, 2024 (same day as the previous note): Same day.",
         "Jan 10, 2024: First.",
-        "Jan 10, 2024 (later the same day): Same day.",
-        "Jan 11, 2024 (1 day later): Next day.",
-        "Feb 8, 2024 (4 weeks later): Weeks.",
-        "Jul 8, 2024 (5 months later): Months.",
-        "Sep 1, 2026 (2 years later): Years.",
-        "Sep 20, 2026 (2 weeks later, most recent): Last.",
     ]
 
 
@@ -108,7 +108,7 @@ def test_coverage_is_reported_in_fields_not_repeated_in_the_text():
     summary = summarize(notes=notes, total=14)
     assert (summary.notes_included, summary.notes_total) == (2, 14)
     assert (summary.notes_from, summary.notes_to) == (date(2026, 1, 1), date(2026, 2, 1))
-    assert summary.narrative.startswith("Jan 1, 2026:")
+    assert summary.narrative.startswith("Feb 1, 2026 (most recent, 4 weeks after")
 
 
 # 02:00 UTC on Mar 2 is still Mar 1 in New York.

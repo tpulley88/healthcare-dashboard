@@ -119,31 +119,33 @@ def _excerpt(content: str) -> str:
 
 def _gap(days: int) -> str:
     if days == 0:
-        return "later the same day"
+        return "same day as the previous note"
     if days < 14:
-        return f"{_plural(days, 'day')} later"
-    if days < 60:
-        return f"{days // 7} weeks later"
-    if days < 730:
-        return f"{days // 30} months later"
-    return f"{days // 365} years later"
+        length = _plural(days, "day")
+    elif days < 60:
+        length = f"{days // 7} weeks"
+    elif days < 730:
+        length = f"{days // 30} months"
+    else:
+        length = f"{days // 365} years"
+    return f"{length} after the previous note"
 
 
-# Each entry leads with its date, so the dates line up like a chart.
-# The time since the previous note shows gaps in care, such as "11 months later".
+# Newest first, like the notes list, and each entry leads with its date like a chart.
+# The time since the previous note shows gaps in care, such as "11 months after".
 def _timeline(dated_notes: list[tuple[date, Note]]) -> list[str]:
     entries = []
     previous: date | None = None
     for index, (day, note) in enumerate(dated_notes):
         details = []
         if previous is not None:
-            details.append(_gap((day - previous).days))
             if index == len(dated_notes) - 1:
                 details.append("most recent")
+            details.append(_gap((day - previous).days))
         lead = _format_date(day) + (f" ({', '.join(details)})" if details else "")
         entries.append(f"{lead}: {_excerpt(note.content)}")
         previous = day
-    return entries
+    return entries[::-1]
 
 
 # One line per note, so each visit is easy to pick out.

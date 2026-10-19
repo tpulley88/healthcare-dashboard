@@ -118,6 +118,11 @@ export interface PatientSummary {
    * Always 0 for the built-in narrative.
    */
   notes_shortened: number
+  /**
+   * Follow-ups the notes planned that no later note shows as done.
+   * Only for generated narratives; always empty for the built-in one.
+   */
+  action_items: string[]
   /** Why the built-in narrative was used when a generated one was wanted; null otherwise. */
   fallback_reason: 'not_configured' | 'provider_error' | null
 }

@@ -173,7 +173,7 @@ def test_summary_without_notes_still_has_full_profile(client, create_patient):
     assert summary["source"] == "template"
 
 
-def test_summary_uses_latest_ten_live_notes_in_chronological_order(client, create_note, patient):
+def test_summary_uses_latest_ten_live_notes_newest_first(client, create_note, patient):
     notes = [
         create_note(patient["id"], taken_at=f"2026-01-{day:02d}T15:00:00Z", content=f"Visit {day}.")
         for day in range(1, 13)
@@ -188,7 +188,8 @@ def test_summary_uses_latest_ten_live_notes_in_chronological_order(client, creat
     assert (summary["notes_from"], summary["notes_to"]) == ("2026-01-02", "2026-01-11")
     assert "Visit 1." not in narrative
     assert "Visit 12." not in narrative
-    positions = [narrative.index(f"Visit {day}.") for day in range(2, 12)]
+    # Newest first, like the notes list.
+    positions = [narrative.index(f"Visit {day}.") for day in range(11, 1, -1)]
     assert positions == sorted(positions)
 
 
